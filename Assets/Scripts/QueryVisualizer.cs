@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using UnityEngine.InputSystem;
+using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 public class QueryVisualizer : MonoBehaviour
 {
@@ -19,8 +21,8 @@ public class QueryVisualizer : MonoBehaviour
 
     private TextMeshPro sharedLabel;
 
-    public int axisFontSize = 1; // Dimensione font degli assi
-    public float axisLabelOffset = 0f; // Offset delle etichette degli assi
+    public int axisFontSize = 1;
+    public float axisLabelOffset = 0f;
 
     void Update()
     {
@@ -44,7 +46,6 @@ public class QueryVisualizer : MonoBehaviour
             anchor = anchorGO.transform;
         }
 
-        // Posiziona l'ancora in una posizione fissa o dinamica
         if (fixedPosition != null)
         {
             anchor.position = fixedPosition.position;
@@ -64,6 +65,47 @@ public class QueryVisualizer : MonoBehaviour
         {
             Destroy(child.gameObject);
         }
+
+        // Rende il grafico trascinabile anche con grip
+        var rb = anchor.gameObject.GetComponent<Rigidbody>();
+        if (rb == null)
+        {
+            rb = anchor.gameObject.AddComponent<Rigidbody>();
+            rb.isKinematic = true;
+            rb.useGravity = false;
+        }
+
+        var grab = anchor.gameObject.GetComponent<XRGrabInteractable>();
+        if (grab == null)
+        {
+            grab = anchor.gameObject.AddComponent<XRGrabInteractable>();
+            grab.movementType = XRBaseInteractable.MovementType.VelocityTracking;
+            grab.trackRotation = false;
+        }
+
+        var collider = anchor.gameObject.GetComponent<BoxCollider>();
+        if (collider == null)
+        {
+            collider = anchor.gameObject.AddComponent<BoxCollider>();
+            collider.center = new Vector3(0f, 0.5f, 0f);
+            collider.size = new Vector3(1f, 1f, 1f);
+        }
+
+        // Supporto a Select e Activate
+        grab.interactionManager = FindAnyObjectByType<XRInteractionManager>();
+        grab.interactionLayers = InteractionLayerMask.GetMask("Everything");
+        grab.useDynamicAttach = true;
+
+        // Debug: afferrato/rilasciato
+        grab.selectEntered.AddListener((args) =>
+        {
+            Debug.Log(" Grafico AFFERRATO da: " + args.interactorObject.transform.name);
+        });
+
+        grab.selectExited.AddListener((args) =>
+        {
+            Debug.Log(" Grafico RILASCIATO da: " + args.interactorObject.transform.name);
+        });
 
         if (sharedLabel == null)
         {
@@ -121,7 +163,6 @@ public class QueryVisualizer : MonoBehaviour
             index++;
         }
 
-        // Aggiungi etichette assi
         CreateXAxisLabel();
         CreateYAxisLabel();
 
@@ -130,7 +171,6 @@ public class QueryVisualizer : MonoBehaviour
 
     private void CreateXAxisLabel()
     {
-        // Etichetta asse X (IP nel tempo)
         GameObject xAxisLabel = new GameObject("XAxisLabel");
         xAxisLabel.transform.SetParent(anchor);
         TextMeshPro tmp = xAxisLabel.AddComponent<TextMeshPro>();
@@ -138,13 +178,12 @@ public class QueryVisualizer : MonoBehaviour
         tmp.fontSize = axisFontSize;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color = Color.white;
-        xAxisLabel.transform.localPosition = new Vector3(0f, -axisLabelOffset, 0f); // Posizionato sotto il grafico
+        xAxisLabel.transform.localPosition = new Vector3(0f, -axisLabelOffset, 0f);
         xAxisLabel.transform.localRotation = Quaternion.Euler(0, 0, 0);
     }
 
     private void CreateYAxisLabel()
     {
-        // Etichetta asse Y (Terabyte per IP)
         GameObject yAxisLabel = new GameObject("YAxisLabel");
         yAxisLabel.transform.SetParent(anchor);
         TextMeshPro tmp = yAxisLabel.AddComponent<TextMeshPro>();
@@ -152,8 +191,8 @@ public class QueryVisualizer : MonoBehaviour
         tmp.fontSize = axisFontSize;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color = Color.white;
-        yAxisLabel.transform.localPosition = new Vector3(-axisLabelOffset, 0f, 0f); // Posizionato accanto al grafico
-        yAxisLabel.transform.localRotation = Quaternion.Euler(0, 0, 90); // Ruotato in modo che sia verticale
+        yAxisLabel.transform.localPosition = new Vector3(-axisLabelOffset, 0f, 0f);
+        yAxisLabel.transform.localRotation = Quaternion.Euler(0, 0, 90);
     }
 
     private IEnumerator AnimateBarGrowth(GameObject bar, float targetHeight, float duration = 0.5f)
