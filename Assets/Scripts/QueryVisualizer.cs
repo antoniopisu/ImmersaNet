@@ -5,7 +5,6 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit;
-using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 public class QueryVisualizer : MonoBehaviour
 {
@@ -13,12 +12,12 @@ public class QueryVisualizer : MonoBehaviour
     public GameObject barPrefab;
     public float barWidth = 0.02f;
     public float spacing = 0.03f;
-    public Transform anchor;
+    public Transform fixedPosition;
     public Material barMaterial;
     public InputActionProperty hideGraphAction;
 
-    public Transform fixedPosition;
-
+    private Transform wrapper;
+    private Transform anchor;
     private TextMeshPro sharedLabel;
 
     public int axisFontSize = 1;
@@ -40,72 +39,52 @@ public class QueryVisualizer : MonoBehaviour
             return;
         }
 
+        if (wrapper == null)
+        {
+            GameObject wrapperGO = new GameObject("HistogramWrapper");
+            wrapper = wrapperGO.transform;
+
+            Transform cam = Camera.main.transform;
+            Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
+            wrapper.position = cam.position + forward * 1.2f + Vector3.down * 0.3f + -cam.right * 0.3f;
+            wrapper.rotation = Quaternion.LookRotation(forward);
+
+            var rb = wrapperGO.AddComponent<Rigidbody>();
+            rb.isKinematic = true;
+            rb.useGravity = false;
+
+            var collider = wrapperGO.AddComponent<BoxCollider>();
+            collider.size = new Vector3(1.2f, 1.2f, 1.2f);
+            collider.center = new Vector3(0.5f, 0.5f, 0f);
+
+            var grab = wrapperGO.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
+            grab.interactionLayers = InteractionLayerMask.GetMask("Default");
+            grab.interactionManager = FindAnyObjectByType<XRInteractionManager>();
+            grab.useDynamicAttach = true;
+
+            grab.selectEntered.AddListener((args) =>
+            {
+                Debug.Log("Grafico afferrato da: " + args.interactorObject.transform.name);
+            });
+
+            grab.selectExited.AddListener((args) =>
+            {
+                Debug.Log("Grafico rilasciato da: " + args.interactorObject.transform.name);
+            });
+        }
+
         if (anchor == null)
         {
             GameObject anchorGO = new GameObject("HistogramAnchor");
+            anchorGO.transform.SetParent(wrapper);
             anchor = anchorGO.transform;
+            anchor.localPosition = Vector3.zero;
+            anchor.localRotation = Quaternion.identity;
+            anchor.localScale = Vector3.one * 2f;
         }
-
-        if (fixedPosition != null)
-        {
-            anchor.position = fixedPosition.position;
-            anchor.rotation = fixedPosition.rotation;
-        }
-        else
-        {
-            Transform cam = Camera.main.transform;
-            Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
-            anchor.position = cam.position + forward * 1.2f + Vector3.down * 0.3f + -cam.right * 0.3f;
-            anchor.rotation = Quaternion.LookRotation(forward);
-        }
-
-        anchor.localScale = Vector3.one * 2f;
 
         foreach (Transform child in anchor)
-        {
             Destroy(child.gameObject);
-        }
-
-        // Rende il grafico trascinabile anche con grip
-        var rb = anchor.gameObject.GetComponent<Rigidbody>();
-        if (rb == null)
-        {
-            rb = anchor.gameObject.AddComponent<Rigidbody>();
-            rb.isKinematic = true;
-            rb.useGravity = false;
-        }
-
-        var grab = anchor.gameObject.GetComponent<XRGrabInteractable>();
-        if (grab == null)
-        {
-            grab = anchor.gameObject.AddComponent<XRGrabInteractable>();
-            grab.movementType = XRBaseInteractable.MovementType.VelocityTracking;
-            grab.trackRotation = false;
-        }
-
-        var collider = anchor.gameObject.GetComponent<BoxCollider>();
-        if (collider == null)
-        {
-            collider = anchor.gameObject.AddComponent<BoxCollider>();
-            collider.center = new Vector3(0f, 0.5f, 0f);
-            collider.size = new Vector3(1f, 1f, 1f);
-        }
-
-        // Supporto a Select e Activate
-        grab.interactionManager = FindAnyObjectByType<XRInteractionManager>();
-        grab.interactionLayers = InteractionLayerMask.GetMask("Everything");
-        grab.useDynamicAttach = true;
-
-        // Debug: afferrato/rilasciato
-        grab.selectEntered.AddListener((args) =>
-        {
-            Debug.Log(" Grafico AFFERRATO da: " + args.interactorObject.transform.name);
-        });
-
-        grab.selectExited.AddListener((args) =>
-        {
-            Debug.Log(" Grafico RILASCIATO da: " + args.interactorObject.transform.name);
-        });
 
         if (sharedLabel == null)
         {
@@ -128,17 +107,14 @@ public class QueryVisualizer : MonoBehaviour
             {
                 if (!ipToByteSum.ContainsKey(ip))
                     ipToByteSum[ip] = 0;
-
                 ipToByteSum[ip] += bytes;
             }
         }
 
         float maxValue = 0f;
         foreach (var value in ipToByteSum.Values)
-        {
             if (value > maxValue)
                 maxValue = value;
-        }
 
         int index = 0;
         foreach (var entry in ipToByteSum)
@@ -148,6 +124,7 @@ public class QueryVisualizer : MonoBehaviour
             GameObject bar = Instantiate(barPrefab, anchor);
             bar.transform.localPosition = new Vector3(index * spacing, 0f, 0f);
             bar.transform.localScale = new Vector3(barWidth, 0f, barWidth);
+
             if (barMaterial != null)
                 bar.GetComponent<Renderer>().material = barMaterial;
 
@@ -223,7 +200,7 @@ public class QueryVisualizer : MonoBehaviour
         if (sharedLabel != null)
         {
             sharedLabel.text = content;
-            Vector3 newPos = new Vector3(barPosition.x, anchor.position.y + 0.5f, barPosition.z);
+            Vector3 newPos = new Vector3(barPosition.x, wrapper.position.y + 0.5f, barPosition.z);
             sharedLabel.transform.position = newPos;
             sharedLabel.transform.rotation = Quaternion.LookRotation(sharedLabel.transform.position - Camera.main.transform.position);
             sharedLabel.gameObject.SetActive(true);
@@ -238,7 +215,7 @@ public class QueryVisualizer : MonoBehaviour
 
     public void HideHistogramAnimated()
     {
-        if (anchor == null) return;
+        if (wrapper == null) return;
         StartCoroutine(HideHistogramRoutine());
     }
 
@@ -247,19 +224,19 @@ public class QueryVisualizer : MonoBehaviour
         float duration = 0.5f;
         float elapsed = 0f;
 
-        Vector3 originalScale = anchor.localScale;
+        Vector3 originalScale = wrapper.localScale;
 
         while (elapsed < duration)
         {
             float t = elapsed / duration;
-            anchor.localScale = Vector3.Lerp(originalScale, Vector3.zero, t);
+            wrapper.localScale = Vector3.Lerp(originalScale, Vector3.zero, t);
             elapsed += Time.deltaTime;
             yield return null;
         }
 
-        anchor.localScale = Vector3.zero;
+        wrapper.localScale = Vector3.zero;
 
-        foreach (Transform child in anchor)
+        foreach (Transform child in wrapper)
         {
             Destroy(child.gameObject);
         }

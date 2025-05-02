@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using UnityEngine.XR.Interaction.Toolkit;
 
 public class VisualizeNetwork : MonoBehaviour
 {
@@ -69,7 +70,7 @@ public class VisualizeNetwork : MonoBehaviour
             if (label != null) label.text = ip;
 
             node.SetActive(false);
-            node.AddComponent<AnimatedNodeFlag>(); // serve a evitare rianimazioni
+            node.AddComponent<AnimatedNodeFlag>();
             index++;
         }
 
@@ -148,6 +149,24 @@ public class VisualizeNetwork : MonoBehaviour
                     lr.SetPosition(0, start);
                     lr.SetPosition(1, start);
 
+                    // Collider per interazione
+                    BoxCollider collider = lineObj.AddComponent<BoxCollider>();
+                    Vector3 midPoint = (start + end) / 2f;
+                    lineObj.transform.position = midPoint;
+                    Vector3 direction = (end - start).normalized;
+                    lineObj.transform.rotation = Quaternion.LookRotation(direction);
+                    collider.size = new Vector3(0.02f, 0.02f, Vector3.Distance(start, end));
+                    collider.center = Vector3.zero;
+
+                    // Interazione semplificata
+                    var interactable = lineObj.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRSimpleInteractable>();
+                    interactable.interactionLayers = InteractionLayerMask.GetMask("Default");
+                    interactable.selectEntered.AddListener((args) =>
+                    {
+                        Debug.Log($"Connessione selezionata: {src} -> {dst}");
+                        // Qui puoi attivare pannelli informativi e nascondere altri oggetti
+                    });
+
                     StartCoroutine(AnimateLineDraw(lr, start, end));
 
                     activeLines.Add(new ActiveLine
@@ -193,7 +212,6 @@ public class VisualizeNetwork : MonoBehaviour
         lr.SetPosition(1, end);
     }
 
-    // Helper class per nodo animato
     private class AnimatedNodeFlag : MonoBehaviour
     {
         public bool hasAnimated = false;
