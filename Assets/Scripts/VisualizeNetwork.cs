@@ -106,6 +106,7 @@ public class VisualizeNetwork : MonoBehaviour
             {
                 string src = row["Src_IP"].Trim();
                 string dst = row["Dst_IP"].Trim();
+                string label = row.ContainsKey("Label") ? row["Label"] : "";
 
                 if (ipToNode.TryGetValue(src, out GameObject srcNode))
                 {
@@ -149,7 +150,19 @@ public class VisualizeNetwork : MonoBehaviour
                     lr.SetPosition(0, start);
                     lr.SetPosition(1, start);
 
-                    // Collider per interazione
+                    if (!label.Equals("Benign", StringComparison.OrdinalIgnoreCase))
+                    {
+                        lr.startColor = Color.red;
+                        lr.endColor = Color.red;
+
+                        var srcRend = ipToNode[src].GetComponentInChildren<Renderer>();
+                        var dstRend = ipToNode[dst].GetComponentInChildren<Renderer>();
+                        if (srcRend != null) srcRend.material.color = Color.red;
+                        if (dstRend != null) dstRend.material.color = Color.red;
+
+                        Debug.Log($"[ATTACK] Label={label} -> Colored RED: {src} -> {dst}");
+                    }
+
                     BoxCollider collider = lineObj.AddComponent<BoxCollider>();
                     Vector3 midPoint = (start + end) / 2f;
                     lineObj.transform.position = midPoint;
@@ -158,13 +171,28 @@ public class VisualizeNetwork : MonoBehaviour
                     collider.size = new Vector3(0.02f, 0.02f, Vector3.Distance(start, end));
                     collider.center = Vector3.zero;
 
-                    // Interazione semplificata
                     var interactable = lineObj.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRSimpleInteractable>();
                     interactable.interactionLayers = InteractionLayerMask.GetMask("Default");
                     interactable.selectEntered.AddListener((args) =>
                     {
-                        Debug.Log($"Connessione selezionata: {src} -> {dst}");
-                        // Qui puoi attivare pannelli informativi e nascondere altri oggetti
+                        var info = new Dictionary<string, string>
+                        {
+                            { "Source IP", src },
+                            { "Destination IP", dst },
+                            { "Protocol", row.ContainsKey("Protocol") ? row["Protocol"] : "-" },
+                            { "Flow Bytes/s", row.ContainsKey("Flow_Bytes_s") ? row["Flow_Bytes_s"] : "-" },
+                            { "Duration (ms)", row.ContainsKey("Flow_Duration") ? row["Flow_Duration"] : "-" },
+                            { "Packets/s", row.ContainsKey("Flow_Packets/s") ? row["Flow_Packets/s"] : "-" },
+                            { "Mean IAT", row.ContainsKey("Flow_IAT_Mean") ? row["Flow_IAT_Mean"] : "-" },
+                            { "Down/Up Ratio", row.ContainsKey("Down/Up_Ratio") ? row["Down/Up_Ratio"] : "-" },
+                            { "Label", row.ContainsKey("Label") ? row["Label"] : "-" }
+                        };
+
+                        var infoPanel = FindAnyObjectByType<ConnectionInfoPanel>();
+                        if (infoPanel != null)
+                        {
+                            infoPanel.ShowInfo(info);
+                        }
                     });
 
                     StartCoroutine(AnimateLineDraw(lr, start, end));
