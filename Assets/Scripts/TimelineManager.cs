@@ -21,7 +21,7 @@ public class TimelineManager : MonoBehaviour
     private Coroutine timelineRoutine;
     private bool isRunning = false;
     private bool isDragging = false;
-
+    
     void Start()
     {
         StartCoroutine(InitializeTimeline());
@@ -69,6 +69,8 @@ public class TimelineManager : MonoBehaviour
 
     void UpdateTimeUI()
     {
+        Debug.Log($"[UpdateTimeUI] Updating time: {currentTime}");
+
         if (timeDisplay != null)
             timeDisplay.text = currentTime.ToString("dd/MM/yyyy HH:mm:ss");
 
@@ -84,10 +86,15 @@ public class TimelineManager : MonoBehaviour
             timelineSlider.value = elapsedSec / totalSec;
     }
 
-    public void OnSliderDragStart() => isDragging = true;
+    public void OnSliderDragStart()
+    {
+        Debug.Log("[TimelineManager] Slider drag started");
+        isDragging = true;
+    }
 
     public void OnSliderDragEnd()
     {
+        Debug.Log("[TimelineManager] Slider drag ended");
         isDragging = false;
         ApplySliderTime();
     }
@@ -110,11 +117,22 @@ public class TimelineManager : MonoBehaviour
 
     public void StartTimeline()
     {
-        if (isRunning)
+        Debug.Log("[TimelineManager] StartTimeline called");
+
+        if (timelineRoutine != null)
         {
             StopCoroutine(timelineRoutine);
-            isRunning = false;
         }
+
+        if (currentTime >= maxTime)
+        {
+            Debug.Log("[TimelineManager] currentTime >= maxTime -> reset to minTime");
+            currentTime = minTime;
+            UpdateTimeUI();
+            UpdateSlider();
+        }
+
+        isDragging = false;
 
         timelineRoutine = StartCoroutine(RunTimeline());
         isRunning = true;
@@ -133,20 +151,28 @@ public class TimelineManager : MonoBehaviour
 
     IEnumerator RunTimeline()
     {
-        while (currentTime <= maxTime)
+        Debug.Log("[TimelineManager] RunTimeline started");
+
+        while (true)
         {
             if (!isDragging)
             {
+                currentTime = currentTime.AddSeconds(1);
+                Debug.Log($"[RunTimeline] currentTime = {currentTime}");
+
+                if (currentTime > maxTime)
+                {
+                    Debug.Log("[TimelineManager] Reached maxTime -> stopping");
+                    StopTimeline();
+                    yield break;
+                }
+
                 UpdateTimeUI();
                 UpdateSlider();
-                currentTime = currentTime.AddSeconds(1);
             }
 
             yield return new WaitForSeconds(updateSpeed);
         }
-
-        isRunning = false;
-        UpdateButtonStates();
     }
 
     void UpdateButtonStates()

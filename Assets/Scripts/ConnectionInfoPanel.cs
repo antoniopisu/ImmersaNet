@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -40,7 +41,17 @@ public class ConnectionInfoPanel : MonoBehaviour
         string result = "<b>Connection Info</b>\n\n";
         foreach (var entry in data)
         {
-            result += $"<b>{entry.Key}:</b> {entry.Value}\n";
+            string key = entry.Key;
+            string value = entry.Value;
+
+            if (key == "Label" && !value.Equals("Benign", StringComparison.OrdinalIgnoreCase))
+            {
+                result += $"<b>{key}:</b> <color=red>{value}</color>\n";
+            }
+            else
+            {
+                result += $"<b>{key}:</b> {value}\n";
+            }
         }
         return result;
     }

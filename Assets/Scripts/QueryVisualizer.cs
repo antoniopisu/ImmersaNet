@@ -155,7 +155,7 @@ public class QueryVisualizer : MonoBehaviour
         tmp.fontSize = axisFontSize;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color = Color.white;
-        xAxisLabel.transform.localPosition = new Vector3(0f, -axisLabelOffset, 0f);
+        xAxisLabel.transform.localPosition = new Vector3(0.25f, -axisLabelOffset + 0.15f, 0f);
         xAxisLabel.transform.localRotation = Quaternion.Euler(0, 0, 0);
     }
 
@@ -168,7 +168,7 @@ public class QueryVisualizer : MonoBehaviour
         tmp.fontSize = axisFontSize;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.color = Color.white;
-        yAxisLabel.transform.localPosition = new Vector3(-axisLabelOffset, 0f, 0f);
+        yAxisLabel.transform.localPosition = new Vector3(-axisLabelOffset + 0.1f, 0.15f, 0f);
         yAxisLabel.transform.localRotation = Quaternion.Euler(0, 0, 90);
     }
 
