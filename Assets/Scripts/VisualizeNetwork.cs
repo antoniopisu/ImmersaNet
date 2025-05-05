@@ -15,7 +15,12 @@ public class VisualizeNetwork : MonoBehaviour
     public float levelHeight = 1f;
     public float ringRadius = 3f;
 
+    [Header("Node Scaling Settings")]
+    public float minNodeScale = 0.5f;
+    public float maxNodeScale = 1.2f;
+
     private Dictionary<string, GameObject> ipToNode = new Dictionary<string, GameObject>();
+    private Dictionary<string, float> ipToCumulativeBytes = new Dictionary<string, float>();
 
     private class ActiveLine
     {
@@ -65,6 +70,7 @@ public class VisualizeNetwork : MonoBehaviour
             GameObject node = Instantiate(nodePrefab, pos, Quaternion.identity);
             node.name = ip;
             ipToNode[ip] = node;
+            ipToCumulativeBytes[ip] = 0f;
 
             var label = node.GetComponentInChildren<TextMeshPro>();
             if (label != null) label.text = ip;
@@ -93,6 +99,8 @@ public class VisualizeNetwork : MonoBehaviour
             return false;
         });
 
+        float maxBytesObserved = 0f;
+
         foreach (var row in loadData.data)
         {
             if (!row.TryGetValue("Timestamp", out string rawTime)) continue;
@@ -107,6 +115,22 @@ public class VisualizeNetwork : MonoBehaviour
                 string src = row["Src_IP"].Trim();
                 string dst = row["Dst_IP"].Trim();
                 string label = row.ContainsKey("Label") ? row["Label"] : "";
+
+                float bytes = 0f;
+                if (row.TryGetValue("Flow_Bytes_s", out string byteStr))
+                    float.TryParse(byteStr, out bytes);
+
+                if (ipToCumulativeBytes.ContainsKey(src))
+                {
+                    ipToCumulativeBytes[src] += bytes;
+                    maxBytesObserved = Mathf.Max(maxBytesObserved, ipToCumulativeBytes[src]);
+                }
+
+                if (ipToCumulativeBytes.ContainsKey(dst))
+                {
+                    ipToCumulativeBytes[dst] += bytes;
+                    maxBytesObserved = Mathf.Max(maxBytesObserved, ipToCumulativeBytes[dst]);
+                }
 
                 if (ipToNode.TryGetValue(src, out GameObject srcNode))
                 {
@@ -204,6 +228,17 @@ public class VisualizeNetwork : MonoBehaviour
                         endTime = endTime
                     });
                 }
+            }
+        }
+
+        // Resize nodes based on normalized cumulative traffic
+        foreach (var kvp in ipToCumulativeBytes)
+        {
+            if (ipToNode.TryGetValue(kvp.Key, out GameObject node))
+            {
+                float normalized = maxBytesObserved > 0f ? kvp.Value / maxBytesObserved : 0f;
+                float scale = Mathf.Lerp(minNodeScale, maxNodeScale, normalized);
+                node.transform.localScale = Vector3.one * scale;
             }
         }
     }
