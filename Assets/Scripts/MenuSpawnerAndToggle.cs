@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
-using UnityEngine.XR.Interaction.Toolkit.UI; // per il raycaster XR
+using UnityEngine.XR.Interaction.Toolkit.UI;
 
 public class MenuSpawnerAndToggle : MonoBehaviour
 {
@@ -20,9 +20,8 @@ public class MenuSpawnerAndToggle : MonoBehaviour
         canvas.worldCamera = Camera.main;
         menuCanvas.AddComponent<CanvasScaler>();
         menuCanvas.AddComponent<GraphicRaycaster>();
-        menuCanvas.AddComponent<TrackedDeviceGraphicRaycaster>(); // XR support
+        menuCanvas.AddComponent<TrackedDeviceGraphicRaycaster>();
 
-        // Imposta layer UI
         int uiLayer = LayerMask.NameToLayer("UI");
         menuCanvas.layer = uiLayer;
 
@@ -34,7 +33,7 @@ public class MenuSpawnerAndToggle : MonoBehaviour
         var rt = menuCanvas.GetComponent<RectTransform>();
         rt.sizeDelta = new Vector2(500, 300);
 
-        // Sfondo
+        // Background Panel
         GameObject panel = new GameObject("Background");
         panel.transform.SetParent(menuCanvas.transform, false);
         RectTransform prt = panel.AddComponent<RectTransform>();
@@ -46,7 +45,7 @@ public class MenuSpawnerAndToggle : MonoBehaviour
         bg.color = new Color(0f, 0f, 0f, 0.9f);
         panel.layer = uiLayer;
 
-        // Titolo
+        // Title
         GameObject label = new GameObject("Label");
         label.transform.SetParent(panel.transform, false);
         var text = label.AddComponent<TextMeshProUGUI>();
@@ -61,10 +60,20 @@ public class MenuSpawnerAndToggle : MonoBehaviour
         text.alignment = TextAlignmentOptions.Center;
         label.layer = uiLayer;
 
-        // Bottoni (2 per riga)
-        int totalButtons = 6;
+        // Query button labels
+        string[] queryNames = new string[]
+        {
+            "Top Talkers Histogram",
+            "View All Connections",
+            "Suspicious IP Analysis",
+            "Traffic by Protocol",
+            "High Bandwidth Flows",
+            "Anomaly Timeline"
+        };
+
+        int totalButtons = queryNames.Length;
         int buttonsPerRow = 2;
-        float buttonWidth = 180;
+        float buttonWidth = 220;
         float buttonHeight = 50;
         float spacing = 10;
         float startX = -((buttonsPerRow - 1) * (buttonWidth + spacing)) / 2f;
@@ -96,32 +105,24 @@ public class MenuSpawnerAndToggle : MonoBehaviour
             trt1.anchorMax = Vector2.one;
             trt1.offsetMin = Vector2.zero;
             trt1.offsetMax = Vector2.zero;
-            tmp.text = $"Query {i + 1}";
+            tmp.text = queryNames[i];
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.fontSize = 20;
             tmp.color = Color.white;
 
             int index = i;
-
-            if (index == 0) // Query 1
+            button.onClick.AddListener(() =>
             {
-                button.onClick.AddListener(() =>
-                {
-                    Debug.Log("Esecuzione Query 1");
+                Debug.Log($"Esecuzione {queryNames[index]}");
+                if (index == 0)
                     queryVisualizer.GenerateHistogram();
-                });
-            }
-            else
-            {
-                button.onClick.AddListener(() => Debug.Log($"Hai cliccato Query {index + 1}"));
-            }
-
+                else
+                    Debug.Log($"Placeholder for query {index + 1}");
+            });
         }
 
         foreach (Transform child in menuCanvas.GetComponentsInChildren<Transform>(true))
-        {
             child.gameObject.layer = uiLayer;
-        }
 
         menuCanvas.SetActive(false);
     }

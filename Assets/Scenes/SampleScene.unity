@@ -2283,6 +2283,8 @@ MonoBehaviour:
   nodesPerLevel: 7
   levelHeight: 1
   ringRadius: 3
+  minNodeScale: 0.2
+  maxNodeScale: 0.8
 --- !u!4 &1142003795
 Transform:
   m_ObjectHideFlags: 0
