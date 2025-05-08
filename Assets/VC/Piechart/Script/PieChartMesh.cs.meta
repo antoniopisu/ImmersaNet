@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 3bac87fa852300a478ea7ca8ce1f2a8d
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 157881
+  packageName: 3D Intractive Piechart
+  packageVersion: 1.0
+  assetPath: Assets/VC/Piechart/Script/PieChartMesh.cs
+  uploadId: 341656

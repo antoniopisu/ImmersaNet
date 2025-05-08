@@ -15,6 +15,8 @@ public class QueryVisualizer : MonoBehaviour
     public Transform fixedPosition;
     public Material barMaterial;
     public InputActionProperty hideGraphAction;
+    public Material[] sliceMaterials;
+    public GameObject pieSlicePrefab;
 
     private Transform wrapper;
     private Transform anchor;
@@ -243,4 +245,94 @@ public class QueryVisualizer : MonoBehaviour
 
         Debug.Log("Istogramma nascosto.");
     }
+
+    public void GeneratePieChart()
+    {
+        if (!loadData.isLoaded)
+        {
+            Debug.LogWarning("I dati non sono ancora stati caricati.");
+            return;
+        }
+
+        if (wrapper == null)
+        {
+            GameObject wrapperGO = new GameObject("PieChartWrapper");
+            wrapper = wrapperGO.transform;
+
+            Transform cam = Camera.main.transform;
+            Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
+            wrapper.position = cam.position + forward * 1.2f;
+            wrapper.rotation = Quaternion.LookRotation(forward);
+
+            var rb = wrapperGO.AddComponent<Rigidbody>();
+            rb.isKinematic = true;
+            rb.useGravity = false;
+
+            var collider = wrapperGO.AddComponent<BoxCollider>();
+            collider.size = new Vector3(1f, 1f, 1f);
+            collider.center = Vector3.zero;
+
+            var grab = wrapperGO.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
+            grab.interactionLayers = InteractionLayerMask.GetMask("Default");
+            grab.interactionManager = FindAnyObjectByType<XRInteractionManager>();
+            grab.useDynamicAttach = true;
+        }
+
+        if (anchor == null)
+        {
+            GameObject anchorGO = new GameObject("PieAnchor");
+            anchorGO.transform.SetParent(wrapper);
+            anchor = anchorGO.transform;
+            anchor.localPosition = Vector3.zero;
+            anchor.localRotation = Quaternion.identity;
+            anchor.localScale = Vector3.one;
+        }
+
+        foreach (Transform child in anchor)
+            Destroy(child.gameObject);
+
+        Dictionary<string, int> protocolCounts = new Dictionary<string, int>();
+        int total = 0;
+
+        foreach (var row in loadData.data)
+        {
+            if (row.TryGetValue("Protocol", out string protocol))
+            {
+                if (!protocolCounts.ContainsKey(protocol))
+                    protocolCounts[protocol] = 0;
+
+                protocolCounts[protocol]++;
+                total++;
+            }
+        }
+
+        float startAngle = 0f;
+        int sliceIndex = 0;
+
+        foreach (var entry in protocolCounts)
+        {
+            float percentage = (float)entry.Value / total;
+            float angle = percentage * 360f;
+
+            GameObject slice = Instantiate(pieSlicePrefab, anchor);
+            slice.transform.localPosition = Vector3.zero;
+            slice.transform.localRotation = Quaternion.Euler(0, startAngle, 0);
+            slice.transform.localScale = Vector3.one * 0.5f;
+
+            PieSliceController controller = slice.GetComponent<PieSliceController>();
+            if (controller != null)
+            {
+                controller.SetSlice(entry.Key, entry.Value, percentage);
+            }
+
+            if (sliceMaterials != null && sliceIndex < sliceMaterials.Length)
+                slice.GetComponent<Renderer>().material = sliceMaterials[sliceIndex];
+
+            startAngle += angle;
+            sliceIndex++;
+        }
+        
+        Debug.Log("Grafico a torta generato con " + protocolCounts.Count + " protocolli.");
+    }
+
 }

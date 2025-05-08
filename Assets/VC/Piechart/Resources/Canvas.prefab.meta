@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: f4abedc29b506264dbc4ee53db200d08
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 157881
+  packageName: 3D Intractive Piechart
+  packageVersion: 1.0
+  assetPath: Assets/VC/Piechart/Resources/Canvas.prefab
+  uploadId: 341656

@@ -64,9 +64,9 @@ public class MenuSpawnerAndToggle : MonoBehaviour
         string[] queryNames = new string[]
         {
             "Top Talkers Histogram",
+            "Traffic by Protocol",
             "View All Connections",
             "Suspicious IP Analysis",
-            "Traffic by Protocol",
             "High Bandwidth Flows",
             "Anomaly Timeline"
         };
@@ -114,10 +114,18 @@ public class MenuSpawnerAndToggle : MonoBehaviour
             button.onClick.AddListener(() =>
             {
                 Debug.Log($"Esecuzione {queryNames[index]}");
-                if (index == 0)
-                    queryVisualizer.GenerateHistogram();
-                else
-                    Debug.Log($"Placeholder for query {index + 1}");
+                switch (index)
+                {
+                    case 0:
+                        queryVisualizer.GenerateHistogram();
+                        break;
+                    case 1:
+                        queryVisualizer.GeneratePieChart();
+                        break;
+                    default:
+                        Debug.Log($"Placeholder for query {index + 1}");
+                        break;
+                }
             });
         }
 

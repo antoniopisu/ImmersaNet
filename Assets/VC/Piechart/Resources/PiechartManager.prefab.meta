@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 23b3e06436f3cde43ac22ad279e4641a
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 157881
+  packageName: 3D Intractive Piechart
+  packageVersion: 1.0
+  assetPath: Assets/VC/Piechart/Resources/PiechartManager.prefab
+  uploadId: 341656

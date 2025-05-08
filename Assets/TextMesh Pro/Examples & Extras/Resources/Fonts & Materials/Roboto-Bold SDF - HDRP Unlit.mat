@@ -2,29 +2,38 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!21 &2100000
 Material:
-  serializedVersion: 6
+  serializedVersion: 8
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Roboto-Bold SDF - HDRP Unlit
-  m_Shader: {fileID: -6465566751694194690, guid: f63d574838ccfb44f84acc05fed0af48, type: 3}
-  m_ShaderKeywords: _ALPHATEST_ON _ENABLE_FOG_ON_TRANSPARENT _SURFACE_TYPE_TRANSPARENT
+  m_Shader: {fileID: 4800000, guid: 650dd9526735d5b46b79224bc6e94025, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords:
+  - _EMISSION
   m_LightmapFlags: 1
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2750
+  m_CustomRenderQueue: -1
   stringTagMap:
     MotionVector: User
-    RenderType: Transparent
+    RenderType: Opaque
   disabledShaderPasses:
   - TransparentDepthPrepass
   - TransparentDepthPostpass
   - TransparentBackface
   - MOTIONVECTORS
+  m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
+    - _BaseMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _BumpMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -38,7 +47,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 28204114720316640, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _OutlineTex:
@@ -57,8 +66,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    m_Ints: []
     m_Floats:
     - _AddPrecomputedVelocity: 0
+    - _AlphaClip: 0
     - _AlphaCutoffEnable: 1
     - _AlphaDstBlend: 10
     - _AlphaSrcBlend: 1
@@ -72,17 +83,22 @@ Material:
     - _BevelRoundness: 0
     - _BevelType: 0
     - _BevelWidth: 0
+    - _Blend: 0
     - _BlendMode: 0
+    - _BlendOp: 0
     - _BumpFace: 0
     - _BumpOutline: 0
     - _ColorMask: 15
+    - _Cull: 2
     - _CullMode: 2
     - _CullModeForward: 2
+    - _Cutoff: 0.5
     - _DepthOffsetEnable: 0
     - _Diffuse: 0.5
     - _DoubleSidedEnable: 0
     - _DoubleSidedNormalMode: 2
-    - _DstBlend: 10
+    - _DstBlend: 0
+    - _DstBlendAlpha: 0
     - _EnableBlendModePreserveSpecularLighting: 0
     - _EnableFogOnTransparent: 1
     - _FaceDilate: 0
@@ -103,8 +119,10 @@ Material:
     - _OutlineUVSpeedY: 0
     - _OutlineWidth: 0
     - _PerspectiveFilter: 0.875
+    - _QueueOffset: 0
     - _Reflectivity: 10
     - _RenderQueueType: 3
+    - _SampleGI: 0
     - _ScaleRatioA: 0.9
     - _ScaleRatioB: 0.73125
     - _ScaleRatioC: 0.73125
@@ -114,6 +132,7 @@ Material:
     - _Sharpness: 0
     - _SpecularPower: 2
     - _SrcBlend: 1
+    - _SrcBlendAlpha: 1
     - _Stencil: 0
     - _StencilComp: 8
     - _StencilOp: 0
@@ -128,6 +147,7 @@ Material:
     - _StencilWriteMaskDistortionVec: 4
     - _StencilWriteMaskGBuffer: 14
     - _StencilWriteMaskMV: 40
+    - _Surface: 0
     - _SurfaceType: 1
     - _TextureHeight: 1024
     - _TextureWidth: 1024
@@ -152,7 +172,9 @@ Material:
     - _ZTestTransparent: 4
     - _ZWrite: 1
     m_Colors:
+    - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _ClipRect: {r: -32767, g: -32767, b: 32767, a: 32767}
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DoubleSidedConstants: {r: 1, g: 1, b: -1, a: 0}
     - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
     - _EnvMatrixRotation: {r: 0, g: 0, b: 0, a: 0}
@@ -176,6 +198,20 @@ Material:
     - _UnderlayColor: {r: 0, g: 0, b: 0, a: 0.5}
     - _UnderlayOffset: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []
+  m_AllowLocking: 1
+--- !u!114 &5974350881008582143
+MonoBehaviour:
+  m_ObjectHideFlags: 11
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  version: 9
 --- !u!114 &8695414737614723888
 MonoBehaviour:
   m_ObjectHideFlags: 11
