@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using UnityEngine.XR.Interaction.Toolkit;
+using System.Globalization;
 
 public class VisualizeNetwork : MonoBehaviour
 {
@@ -16,11 +17,15 @@ public class VisualizeNetwork : MonoBehaviour
     public float ringRadius = 3f;
 
     [Header("Node Scaling Settings")]
-    public float minNodeScale = 0.5f;
-    public float maxNodeScale = 1.2f;
+    public float minNodeScale = 0.2f;
+    public float maxNodeScale = 1.0f;
+
+    [Header("DoS Detection")]
+    [Tooltip("Soglia per segnalazione traffico sospetto (99° percentile Flow_Bytes_s)")]
+    public double dosThreshold = 0;
 
     private Dictionary<string, GameObject> ipToNode = new Dictionary<string, GameObject>();
-    private Dictionary<string, float> ipToCumulativeBytes = new Dictionary<string, float>();
+    private Dictionary<string, double> ipToCumulativeBytes = new Dictionary<string, double>();
 
     private class ActiveLine
     {
@@ -70,7 +75,7 @@ public class VisualizeNetwork : MonoBehaviour
             GameObject node = Instantiate(nodePrefab, pos, Quaternion.identity);
             node.name = ip;
             ipToNode[ip] = node;
-            ipToCumulativeBytes[ip] = 0f;
+            ipToCumulativeBytes[ip] = 0.0;
 
             var label = node.GetComponentInChildren<TextMeshPro>();
             if (label != null) label.text = ip;
@@ -99,7 +104,8 @@ public class VisualizeNetwork : MonoBehaviour
             return false;
         });
 
-        float maxBytesObserved = 0f;
+        double maxBytesObserved = 0;
+        int orangeNodeAlerts = 0;
 
         foreach (var row in loadData.data)
         {
@@ -115,21 +121,31 @@ public class VisualizeNetwork : MonoBehaviour
                 string src = row["Src_IP"].Trim();
                 string dst = row["Dst_IP"].Trim();
                 string label = row.ContainsKey("Label") ? row["Label"] : "";
+                Debug.Log($"[LABEL CHECK] Label = '{label}'");
 
-                float bytes = 0f;
+                double bytes = 0;
                 if (row.TryGetValue("Flow_Bytes_s", out string byteStr))
-                    float.TryParse(byteStr, out bytes);
+                {
+                    if (!double.TryParse(byteStr, NumberStyles.Float, CultureInfo.InvariantCulture, out bytes))
+                    {
+                        Debug.LogWarning($"[PARSE FAIL] Flow_Bytes_s = '{byteStr}' non convertibile.");
+                    }
+                    else
+                    {
+                        Debug.Log($"[PARSE] Flow_Bytes_s: '{byteStr}' -> {bytes}");
+                    }
+                }
 
                 if (ipToCumulativeBytes.ContainsKey(src))
                 {
                     ipToCumulativeBytes[src] += bytes;
-                    maxBytesObserved = Mathf.Max(maxBytesObserved, ipToCumulativeBytes[src]);
+                    maxBytesObserved = Math.Max(maxBytesObserved, ipToCumulativeBytes[src]);
                 }
 
                 if (ipToCumulativeBytes.ContainsKey(dst))
                 {
                     ipToCumulativeBytes[dst] += bytes;
-                    maxBytesObserved = Mathf.Max(maxBytesObserved, ipToCumulativeBytes[dst]);
+                    maxBytesObserved = Math.Max(maxBytesObserved, ipToCumulativeBytes[dst]);
                 }
 
                 if (ipToNode.TryGetValue(src, out GameObject srcNode))
@@ -174,7 +190,7 @@ public class VisualizeNetwork : MonoBehaviour
                     lr.SetPosition(0, start);
                     lr.SetPosition(1, start);
 
-                    if (!label.Equals("Benign", StringComparison.OrdinalIgnoreCase))
+                    if (!label.Trim().Equals("Benign", StringComparison.OrdinalIgnoreCase))
                     {
                         lr.startColor = Color.red;
                         lr.endColor = Color.red;
@@ -185,6 +201,27 @@ public class VisualizeNetwork : MonoBehaviour
                         if (dstRend != null) dstRend.material.color = Color.red;
 
                         Debug.Log($"[ATTACK] Label={label} -> Colored RED: {src} -> {dst}");
+                    }
+                    else
+                    {
+                        Debug.Log($"[DEBUG] Benign flow - Bytes: {bytes}, Threshold: {dosThreshold}");
+
+                        var srcRend = ipToNode[src].GetComponentInChildren<Renderer>();
+                        var dstRend = ipToNode[dst].GetComponentInChildren<Renderer>();
+                        Color orange = new Color(1f, 0.6f, 0f);
+                        Color red = Color.red;
+
+                        if (bytes > dosThreshold)
+                        {
+                            if (srcRend != null && srcRend.material.color != red)
+                                srcRend.material.color = orange;
+
+                            if (dstRend != null && dstRend.material.color != red)
+                                dstRend.material.color = orange;
+
+                            orangeNodeAlerts++;
+                            Debug.Log($"[ALERT] Bytes={bytes} > Soglia={dosThreshold} tra {src} e {dst}");
+                        }
                     }
 
                     BoxCollider collider = lineObj.AddComponent<BoxCollider>();
@@ -231,13 +268,14 @@ public class VisualizeNetwork : MonoBehaviour
             }
         }
 
-        // Resize nodes based on normalized cumulative traffic
+        Debug.Log($"[SUMMARY] Nodi sospetti (arancioni): {orangeNodeAlerts} al tempo {tempo:HH:mm:ss}");
+
         foreach (var kvp in ipToCumulativeBytes)
         {
             if (ipToNode.TryGetValue(kvp.Key, out GameObject node))
             {
-                float normalized = maxBytesObserved > 0f ? kvp.Value / maxBytesObserved : 0f;
-                float scale = Mathf.Lerp(minNodeScale, maxNodeScale, normalized);
+                double normalized = maxBytesObserved > 0 ? kvp.Value / maxBytesObserved : 0;
+                float scale = Mathf.Lerp(minNodeScale, maxNodeScale, (float)normalized);
                 node.transform.localScale = Vector3.one * scale;
             }
         }

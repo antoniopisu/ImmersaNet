@@ -120,7 +120,7 @@ public class MenuSpawnerAndToggle : MonoBehaviour
                         queryVisualizer.GenerateHistogram();
                         break;
                     case 1:
-                        queryVisualizer.GeneratePieChart();
+                        //FindObjectOfType<RuntimeProtocolPieChart>().ShowPieChart();
                         break;
                     default:
                         Debug.Log($"Placeholder for query {index + 1}");
