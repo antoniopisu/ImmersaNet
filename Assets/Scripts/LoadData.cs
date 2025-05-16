@@ -10,7 +10,7 @@ public class LoadData : MonoBehaviour
 
     public IEnumerator LoadFile()
     {
-        TextAsset csvFile = Resources.Load<TextAsset>("benign_high_bytes");
+        TextAsset csvFile = Resources.Load<TextAsset>("nuevo");
 
         if (csvFile == null)
         {

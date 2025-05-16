@@ -10,20 +10,34 @@ public class QueryVisualizer : MonoBehaviour
 {
     public LoadData loadData;
     public GameObject barPrefab;
+    public GameObject protocolBubblePrefab;
     public float barWidth = 0.02f;
     public float spacing = 0.03f;
     public Transform fixedPosition;
     public Material barMaterial;
     public InputActionProperty hideGraphAction;
-    public Material[] sliceMaterials;
-    public GameObject pieSlicePrefab;
 
     private Transform wrapper;
     private Transform anchor;
+    private Transform protocolWrapper;
     private TextMeshPro sharedLabel;
 
     public int axisFontSize = 1;
     public float axisLabelOffset = 0f;
+
+    private static readonly Dictionary<string, string> protocolNameMap = new Dictionary<string, string>
+    {
+        { "1", "ICMP" },
+        { "2", "IGMP" },
+        { "6", "TCP" },
+        { "17", "UDP" },
+        { "41", "IPv6" },
+        { "47", "GRE" },
+        { "50", "ESP" },
+        { "51", "AH" },
+        { "58", "ICMPv6" },
+        { "89", "OSPF" }
+    };
 
     void Update()
     {
@@ -63,16 +77,6 @@ public class QueryVisualizer : MonoBehaviour
             grab.interactionLayers = InteractionLayerMask.GetMask("Default");
             grab.interactionManager = FindAnyObjectByType<XRInteractionManager>();
             grab.useDynamicAttach = true;
-
-            grab.selectEntered.AddListener((args) =>
-            {
-                Debug.Log("Grafico afferrato da: " + args.interactorObject.transform.name);
-            });
-
-            grab.selectExited.AddListener((args) =>
-            {
-                Debug.Log("Grafico rilasciato da: " + args.interactorObject.transform.name);
-            });
         }
 
         if (anchor == null)
@@ -147,6 +151,201 @@ public class QueryVisualizer : MonoBehaviour
 
         Debug.Log("Istogramma generato con " + index + " barre.");
     }
+
+    public void GenerateProtocolBubbles()
+    {
+        if (!loadData.isLoaded)
+        {
+            Debug.LogWarning("I dati non sono ancora stati caricati.");
+            return;
+        }
+
+        if (protocolWrapper != null)
+            Destroy(protocolWrapper.gameObject);
+
+        GameObject wrapperGO = new GameObject("ProtocolBubbleWrapper");
+        protocolWrapper = wrapperGO.transform;
+
+        Transform cam = Camera.main.transform;
+        Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
+        protocolWrapper.position = cam.position + forward * 1.5f + Vector3.down * 0.2f;
+        protocolWrapper.rotation = Quaternion.LookRotation(forward);
+
+        Dictionary<string, int> protocolCount = new Dictionary<string, int>();
+        foreach (var row in loadData.data)
+        {
+            if (row.TryGetValue("Protocol", out string protoCode))
+            {
+                protoCode = protoCode.Trim();
+
+                if (string.IsNullOrEmpty(protoCode))
+                    protoCode = "Unknown";
+
+                Debug.Log($"Protocol letto: {protoCode}");
+
+                string protoName = protocolNameMap.TryGetValue(protoCode, out var name) ? name : $"Unknown ({protoCode})";
+
+                if (!protocolCount.ContainsKey(protoName))
+                    protocolCount[protoName] = 0;
+
+                protocolCount[protoName]++;
+            }
+        }
+
+        Debug.Log("Conteggi protocolli trovati:");
+        foreach (var entry in protocolCount)
+        {
+            Debug.Log($"Protocollo: {entry.Key}, Flussi: {entry.Value}");
+        }
+
+        int totalFlows = 0;
+        foreach (var val in protocolCount.Values)
+            totalFlows += val;
+
+        int i = 0;
+        foreach (var entry in protocolCount)
+        {
+            float angle = i * Mathf.PI * 2f / protocolCount.Count;
+            Vector3 pos = new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * 0.05f;
+
+            GameObject bubble = Instantiate(protocolBubblePrefab, protocolWrapper);
+            bubble.transform.localPosition = pos + Vector3.up * UnityEngine.Random.Range(-0.1f, 0.1f);
+            bubble.transform.localRotation = Quaternion.identity;
+            bubble.transform.localScale = Vector3.one * 0.2f;
+
+            var script = bubble.GetComponent<ProtocolBubble>();
+            script.SetInfo(entry.Key, entry.Value, (float)entry.Value / totalFlows);
+
+            bubble.AddComponent<FloatingMotion>();
+
+            Rigidbody bubbleRb = bubble.GetComponent<Rigidbody>();
+            if (bubbleRb == null)
+            {
+                bubbleRb = bubble.AddComponent<Rigidbody>();
+            }
+            bubbleRb.useGravity = false;
+            bubbleRb.isKinematic = false;
+
+            var bubbleGrab = bubble.GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
+            if (bubbleGrab == null)
+            {
+                bubbleGrab = bubble.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
+                bubbleGrab.interactionLayers = InteractionLayerMask.GetMask("Default");
+                bubbleGrab.interactionManager = FindAnyObjectByType<XRInteractionManager>();
+                bubbleGrab.useDynamicAttach = true;
+            }
+
+            i++;
+        }
+
+        Debug.Log("Bolle dei protocolli generate.");
+    }
+
+    public void GenerateHeatmap()
+    {
+        if (!loadData.isLoaded)
+        {
+            Debug.LogWarning("Dati non caricati.");
+            return;
+        }
+
+        if (protocolWrapper != null)
+            Destroy(protocolWrapper.gameObject);
+
+        GameObject wrapperGO = new GameObject("HeatmapWrapper");
+        protocolWrapper = wrapperGO.transform;
+
+        Transform cam = Camera.main.transform;
+        Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
+
+        // Posiziona davanti alla camera a 1.5m e all'altezza degli occhi (es. 1.6m)
+        protocolWrapper.position = cam.position + forward * 1.5f + Vector3.up * 1.6f;
+
+        // Ruota per farlo verticale e rivolto verso di te
+        protocolWrapper.rotation = Quaternion.LookRotation(forward) * Quaternion.Euler(90f, 0f, 0f);
+
+        // Calcola traffico per coppie Src_IP -> Dst_IP
+        Dictionary<(string, string), float> trafficMap = new Dictionary<(string, string), float>();
+
+        foreach (var row in loadData.data)
+        {
+            if (row.TryGetValue("Src_IP", out string src) &&
+                row.TryGetValue("Dst_IP", out string dst) &&
+                row.TryGetValue("Flow_Bytes_s", out string bytesStr) &&
+                float.TryParse(bytesStr, out float bytes))
+            {
+                var key = (src, dst);
+                if (!trafficMap.ContainsKey(key))
+                    trafficMap[key] = 0f;
+                trafficMap[key] += bytes;
+            }
+        }
+
+        // Trova valore massimo per normalizzare
+        float maxTraffic = 0f;
+        foreach (var val in trafficMap.Values)
+            if (val > maxTraffic)
+                maxTraffic = val;
+
+        // Layout heatmap
+        float spacing = 0.1f;  // distanza tra le celle
+        List<string> uniqueSrc = new List<string>();
+        List<string> uniqueDst = new List<string>();
+
+        foreach (var key in trafficMap.Keys)
+        {
+            if (!uniqueSrc.Contains(key.Item1)) uniqueSrc.Add(key.Item1);
+            if (!uniqueDst.Contains(key.Item2)) uniqueDst.Add(key.Item2);
+        }
+
+        foreach (var entry in trafficMap)
+        {
+            int xIndex = uniqueSrc.IndexOf(entry.Key.Item1);
+            int zIndex = uniqueDst.IndexOf(entry.Key.Item2);
+
+            Vector3 pos = new Vector3(xIndex * spacing, 0, zIndex * spacing);
+
+            GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            cube.transform.SetParent(protocolWrapper);
+            cube.transform.localPosition = pos;
+
+            // Rotazione verso la camera su asse Y ignorando altezza
+            Vector3 lookPos = Camera.main.transform.position;
+            lookPos.y = cube.transform.position.y;
+            cube.transform.LookAt(lookPos);
+
+            // Se il cubo guarda nel verso sbagliato, decommenta la riga sotto:
+            // cube.transform.Rotate(0, 180f, 0);
+
+            float height = Mathf.Lerp(0.01f, 0.3f, entry.Value / maxTraffic);
+            cube.transform.localScale = new Vector3(spacing * 0.8f, height, spacing * 0.8f);
+
+            Color c = Color.Lerp(Color.blue, Color.red, entry.Value / maxTraffic);
+            var rend = cube.GetComponent<Renderer>();
+            rend.material = new Material(Shader.Find("Standard"));
+            rend.material.color = c;
+
+            cube.transform.localPosition += new Vector3(0, height / 2f, 0);
+
+            // Testo sopra la cella
+            GameObject textGO = new GameObject("Label");
+            textGO.transform.SetParent(cube.transform);
+            textGO.transform.localPosition = new Vector3(0, 0.6f, 0);
+
+            var text = textGO.AddComponent<TextMeshPro>();
+            text.text = $"{entry.Key.Item1}\n->\n{entry.Key.Item2}\n{entry.Value:F0} bytes";
+            text.fontSize = 0.5f;
+            text.alignment = TextAlignmentOptions.Center;
+            text.color = Color.white;
+            text.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+
+            textGO.AddComponent<FaceCamera>();
+        }
+    }
+
+
+
+
 
     private void CreateXAxisLabel()
     {
@@ -245,94 +444,4 @@ public class QueryVisualizer : MonoBehaviour
 
         Debug.Log("Istogramma nascosto.");
     }
-
-    public void GeneratePieChart()
-    {
-        if (!loadData.isLoaded)
-        {
-            Debug.LogWarning("I dati non sono ancora stati caricati.");
-            return;
-        }
-
-        if (wrapper == null)
-        {
-            GameObject wrapperGO = new GameObject("PieChartWrapper");
-            wrapper = wrapperGO.transform;
-
-            Transform cam = Camera.main.transform;
-            Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
-            wrapper.position = cam.position + forward * 1.2f;
-            wrapper.rotation = Quaternion.LookRotation(forward);
-
-            var rb = wrapperGO.AddComponent<Rigidbody>();
-            rb.isKinematic = true;
-            rb.useGravity = false;
-
-            var collider = wrapperGO.AddComponent<BoxCollider>();
-            collider.size = new Vector3(1f, 1f, 1f);
-            collider.center = Vector3.zero;
-
-            var grab = wrapperGO.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
-            grab.interactionLayers = InteractionLayerMask.GetMask("Default");
-            grab.interactionManager = FindAnyObjectByType<XRInteractionManager>();
-            grab.useDynamicAttach = true;
-        }
-
-        if (anchor == null)
-        {
-            GameObject anchorGO = new GameObject("PieAnchor");
-            anchorGO.transform.SetParent(wrapper);
-            anchor = anchorGO.transform;
-            anchor.localPosition = Vector3.zero;
-            anchor.localRotation = Quaternion.identity;
-            anchor.localScale = Vector3.one;
-        }
-
-        foreach (Transform child in anchor)
-            Destroy(child.gameObject);
-
-        Dictionary<string, int> protocolCounts = new Dictionary<string, int>();
-        int total = 0;
-
-        foreach (var row in loadData.data)
-        {
-            if (row.TryGetValue("Protocol", out string protocol))
-            {
-                if (!protocolCounts.ContainsKey(protocol))
-                    protocolCounts[protocol] = 0;
-
-                protocolCounts[protocol]++;
-                total++;
-            }
-        }
-
-        float startAngle = 0f;
-        int sliceIndex = 0;
-
-        foreach (var entry in protocolCounts)
-        {
-            float percentage = (float)entry.Value / total;
-            float angle = percentage * 360f;
-
-            GameObject slice = Instantiate(pieSlicePrefab, anchor);
-            slice.transform.localPosition = Vector3.zero;
-            slice.transform.localRotation = Quaternion.Euler(0, startAngle, 0);
-            slice.transform.localScale = Vector3.one * 0.5f;
-
-            PieSliceController controller = slice.GetComponent<PieSliceController>();
-            if (controller != null)
-            {
-                controller.SetSlice(entry.Key, entry.Value, percentage);
-            }
-
-            if (sliceMaterials != null && sliceIndex < sliceMaterials.Length)
-                slice.GetComponent<Renderer>().material = sliceMaterials[sliceIndex];
-
-            startAngle += angle;
-            sliceIndex++;
-        }
-        
-        Debug.Log("Grafico a torta generato con " + protocolCounts.Count + " protocolli.");
-    }
-
 }

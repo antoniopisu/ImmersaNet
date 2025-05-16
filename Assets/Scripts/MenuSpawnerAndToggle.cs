@@ -65,7 +65,8 @@ public class MenuSpawnerAndToggle : MonoBehaviour
         {
             "Top Talkers Histogram",
             "Traffic by Protocol",
-            "View All Connections",
+            "Heatmap Tbyte",
+            //"View All Connections",
             "Suspicious IP Analysis",
             "High Bandwidth Flows",
             "Anomaly Timeline"
@@ -120,7 +121,10 @@ public class MenuSpawnerAndToggle : MonoBehaviour
                         queryVisualizer.GenerateHistogram();
                         break;
                     case 1:
-                        //FindObjectOfType<RuntimeProtocolPieChart>().ShowPieChart();
+                        queryVisualizer.GenerateProtocolBubbles();
+                        break;
+                    case 2:
+                        queryVisualizer.GenerateHeatmap();
                         break;
                     default:
                         Debug.Log($"Placeholder for query {index + 1}");
