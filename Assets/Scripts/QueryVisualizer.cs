@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using System.Linq;
 using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit;
 
@@ -241,6 +242,20 @@ public class QueryVisualizer : MonoBehaviour
         Debug.Log("Bolle dei protocolli generate.");
     }
 
+    Color GetHeatmapColor(float valueInTB)
+    {
+        if (valueInTB == 0f)
+            return Color.blue;
+        else if (valueInTB < 2e-9f)
+            return Color.cyan;
+        else if (valueInTB < 1.6e-7f)
+            return Color.green;
+        else if (valueInTB < 3.4e-7f)
+            return Color.yellow;
+        else
+            return Color.red;
+    }
+
     public void GenerateHeatmap()
     {
         if (!loadData.isLoaded)
@@ -255,18 +270,14 @@ public class QueryVisualizer : MonoBehaviour
         GameObject wrapperGO = new GameObject("HeatmapWrapper");
         protocolWrapper = wrapperGO.transform;
 
+        // Posizionamento davanti alla camera (senza offset verticale)
         Transform cam = Camera.main.transform;
         Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
+        protocolWrapper.position = cam.position + forward * 3f;
+        protocolWrapper.rotation = Quaternion.LookRotation(forward) * Quaternion.Euler(-90f, 0f, 0f);
 
-        // Posiziona davanti alla camera a 1.5m e all'altezza degli occhi (es. 1.6m)
-        protocolWrapper.position = cam.position + forward * 1.5f + Vector3.up * 1.6f;
-
-        // Ruota per farlo verticale e rivolto verso di te
-        protocolWrapper.rotation = Quaternion.LookRotation(forward) * Quaternion.Euler(90f, 0f, 0f);
-
-        // Calcola traffico per coppie Src_IP -> Dst_IP
+        // Step 1: Mappa traffico (Src_IP, Dst_IP) -> byte
         Dictionary<(string, string), float> trafficMap = new Dictionary<(string, string), float>();
-
         foreach (var row in loadData.data)
         {
             if (row.TryGetValue("Src_IP", out string src) &&
@@ -281,67 +292,79 @@ public class QueryVisualizer : MonoBehaviour
             }
         }
 
-        // Trova valore massimo per normalizzare
-        float maxTraffic = 0f;
-        foreach (var val in trafficMap.Values)
-            if (val > maxTraffic)
-                maxTraffic = val;
+        // Step 2: IP unici
+        List<string> srcIPs = trafficMap.Keys.Select(k => k.Item1).Distinct().ToList();
+        List<string> dstIPs = trafficMap.Keys.Select(k => k.Item2).Distinct().ToList();
 
-        // Layout heatmap
-        float spacing = 0.1f;  // distanza tra le celle
-        List<string> uniqueSrc = new List<string>();
-        List<string> uniqueDst = new List<string>();
+        float spacing = 0.1f;
+        int numCols = srcIPs.Count;
+        int numRows = dstIPs.Count;
 
-        foreach (var key in trafficMap.Keys)
+        // Offset per centrare la griglia
+        Vector3 centerOffset = new Vector3(
+            (numCols - 1) * spacing / 2f,
+            0f,
+            (numRows - 1) * spacing / 2f
+        );
+
+        // Etichette colonna (sorgente)
+        for (int x = 0; x < numCols; x++)
         {
-            if (!uniqueSrc.Contains(key.Item1)) uniqueSrc.Add(key.Item1);
-            if (!uniqueDst.Contains(key.Item2)) uniqueDst.Add(key.Item2);
+            GameObject labelX = new GameObject("SrcLabel");
+            labelX.transform.SetParent(protocolWrapper);
+            labelX.transform.localPosition = new Vector3(x * spacing, spacing * 0.6f, -spacing) - centerOffset;
+
+            var textX = labelX.AddComponent<TextMeshPro>();
+            textX.text = srcIPs[x];
+            textX.fontSize = 0.2f;
+            textX.alignment = TextAlignmentOptions.Center;
+            textX.rectTransform.sizeDelta = new Vector2(1, 1);
         }
 
-        foreach (var entry in trafficMap)
+        // Etichette riga (destinazione)
+        for (int z = 0; z < numRows; z++)
         {
-            int xIndex = uniqueSrc.IndexOf(entry.Key.Item1);
-            int zIndex = uniqueDst.IndexOf(entry.Key.Item2);
+            GameObject labelZ = new GameObject("DstLabel");
+            labelZ.transform.SetParent(protocolWrapper);
+            labelZ.transform.localPosition = new Vector3(-spacing, 0, z * spacing) - centerOffset;
 
-            Vector3 pos = new Vector3(xIndex * spacing, 0, zIndex * spacing);
+            var textZ = labelZ.AddComponent<TextMeshPro>();
+            textZ.text = dstIPs[z];
+            textZ.fontSize = 0.2f;
+            textZ.alignment = TextAlignmentOptions.Right;
+            textZ.rectTransform.sizeDelta = new Vector2(1, 1);
+        }
 
-            GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cube.transform.SetParent(protocolWrapper);
-            cube.transform.localPosition = pos;
+        // Celle
+        for (int x = 0; x < numCols; x++)
+        {
+            for (int z = 0; z < numRows; z++)
+            {
+                string src = srcIPs[x];
+                string dst = dstIPs[z];
+                float value = trafficMap.ContainsKey((src, dst)) ? trafficMap[(src, dst)] : 0f;
+                float valueInTB = value / 1e12f;
 
-            // Rotazione verso la camera su asse Y ignorando altezza
-            Vector3 lookPos = Camera.main.transform.position;
-            lookPos.y = cube.transform.position.y;
-            cube.transform.LookAt(lookPos);
+                GameObject cell = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                cell.transform.SetParent(protocolWrapper);
+                cell.transform.localScale = Vector3.one * spacing * 0.9f;
+                cell.transform.localPosition = new Vector3(x * spacing, 0, z * spacing) - centerOffset;
 
-            // Se il cubo guarda nel verso sbagliato, decommenta la riga sotto:
-            // cube.transform.Rotate(0, 180f, 0);
+                Color color = GetHeatmapColor(valueInTB);
+                var renderer = cell.GetComponent<Renderer>();
+                Material mat = new Material(Shader.Find("Unlit/Color"));
+                mat.color = color;
+                renderer.material = mat;
+                if (mat == null)
+                    Debug.LogError("SHADER NON TROVATO!");
 
-            float height = Mathf.Lerp(0.01f, 0.3f, entry.Value / maxTraffic);
-            cube.transform.localScale = new Vector3(spacing * 0.8f, height, spacing * 0.8f);
-
-            Color c = Color.Lerp(Color.blue, Color.red, entry.Value / maxTraffic);
-            var rend = cube.GetComponent<Renderer>();
-            rend.material = new Material(Shader.Find("Standard"));
-            rend.material.color = c;
-
-            cube.transform.localPosition += new Vector3(0, height / 2f, 0);
-
-            // Testo sopra la cella
-            GameObject textGO = new GameObject("Label");
-            textGO.transform.SetParent(cube.transform);
-            textGO.transform.localPosition = new Vector3(0, 0.6f, 0);
-
-            var text = textGO.AddComponent<TextMeshPro>();
-            text.text = $"{entry.Key.Item1}\n->\n{entry.Key.Item2}\n{entry.Value:F0} bytes";
-            text.fontSize = 0.5f;
-            text.alignment = TextAlignmentOptions.Center;
-            text.color = Color.white;
-            text.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
-
-            textGO.AddComponent<FaceCamera>();
+            }
         }
     }
+
+
+
+
 
 
 
