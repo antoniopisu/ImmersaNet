@@ -22,9 +22,11 @@ public class QueryVisualizer : MonoBehaviour
     private Transform anchor;
     private Transform protocolWrapper;
     private TextMeshPro sharedLabel;
+    private GameObject sharedLabelQ2Background;
 
     public int axisFontSize = 1;
     public float axisLabelOffset = 0f;
+    public TextMeshPro sharedLabelQ2;
 
     private static readonly Dictionary<string, string> protocolNameMap = new Dictionary<string, string>
     {
@@ -274,13 +276,11 @@ public class QueryVisualizer : MonoBehaviour
         GameObject wrapperGO = new GameObject("HeatmapWrapper");
         protocolWrapper = wrapperGO.transform;
 
-        // Posizionamento davanti alla camera come pannello verticale
         Transform cam = Camera.main.transform;
         Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
         protocolWrapper.position = cam.position + forward * 3f;
-        protocolWrapper.rotation = Quaternion.LookRotation(forward); // Non ruotiamo in basso
+        protocolWrapper.rotation = Quaternion.LookRotation(forward);
 
-        // Step 1: Costruzione mappa traffico (Src, Dst) -> valore
         Dictionary<(string, string), float> trafficMap = new Dictionary<(string, string), float>();
         foreach (var row in loadData.data)
         {
@@ -296,7 +296,6 @@ public class QueryVisualizer : MonoBehaviour
             }
         }
 
-        // Calcolo min e max dinamici
         float min = float.MaxValue;
         float max = float.MinValue;
         foreach (var val in trafficMap.Values)
@@ -307,14 +306,12 @@ public class QueryVisualizer : MonoBehaviour
                 max = Mathf.Max(max, val);
             }
         }
-        min = Mathf.Max(min, 1f); // Evita log(0)
+        min = Mathf.Max(min, 1f);
         Debug.Log($"[Heatmap] Min traffic: {min}, Max traffic: {max}");
 
-        // IP unici
         List<string> srcIPs = trafficMap.Keys.Select(k => k.Item1).Distinct().ToList();
         List<string> dstIPs = trafficMap.Keys.Select(k => k.Item2).Distinct().ToList();
 
-        float spacing = 0.1f;
         int numCols = srcIPs.Count;
         int numRows = dstIPs.Count;
 
@@ -324,35 +321,6 @@ public class QueryVisualizer : MonoBehaviour
             0f
         );
 
-        // Etichette colonne (sorgenti, sopra)
-        for (int x = 0; x < numCols; x++)
-        {
-            GameObject labelX = new GameObject("SrcLabel");
-            labelX.transform.SetParent(protocolWrapper);
-            labelX.transform.localPosition = new Vector3(x * spacing, spacing * (numRows + 0.5f), 0) - centerOffset;
-
-            var textX = labelX.AddComponent<TextMeshPro>();
-            textX.text = srcIPs[x];
-            textX.fontSize = 0.1f;
-            textX.alignment = TextAlignmentOptions.Center;
-            textX.rectTransform.sizeDelta = new Vector2(1, 1);
-        }
-
-        // Etichette righe (destinazioni, sinistra)
-        for (int y = 0; y < numRows; y++)
-        {
-            GameObject labelY = new GameObject("DstLabel");
-            labelY.transform.SetParent(protocolWrapper);
-            labelY.transform.localPosition = new Vector3(-spacing, y * spacing, 0) - centerOffset;
-
-            var textY = labelY.AddComponent<TextMeshPro>();
-            textY.text = dstIPs[y];
-            textY.fontSize = 0.1f;
-            textY.alignment = TextAlignmentOptions.Right;
-            textY.rectTransform.sizeDelta = new Vector2(1, 1);
-        }
-
-        // Celle
         for (int x = 0; x < numCols; x++)
         {
             for (int y = 0; y < numRows; y++)
@@ -367,21 +335,52 @@ public class QueryVisualizer : MonoBehaviour
                 cell.transform.localPosition = new Vector3(x * spacing, y * spacing, 0) - centerOffset;
                 cell.transform.localRotation = Quaternion.identity;
 
-                // Colore
                 Color color = GetHeatmapColor(value, min, max);
-
-                // Materiale unlit
                 var renderer = cell.GetComponent<Renderer>();
                 Material mat = new Material(Shader.Find("Unlit/Color"));
                 mat.color = color;
                 renderer.material = mat;
 
-                // Debug
+                cell.AddComponent<BoxCollider>();
+                cell.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRSimpleInteractable>();
+                var hover = cell.AddComponent<ShowLabelOnHover>();
+                hover.ipText = $"{src} -> {dst}";
+                hover.byteValue = value;
+                hover.visualizer = this;
+                hover.isQuery2 = true;
+
                 float logValue = Mathf.Log10(Mathf.Max(value, min));
                 float normalized = Mathf.InverseLerp(Mathf.Log10(min), Mathf.Log10(max), logValue);
                 Debug.Log($"[Heatmap] {src}->{dst}: {value} Byte/s -> norm: {normalized:F2} -> color: {color}");
             }
         }
+
+        if (sharedLabelQ2 == null)
+        {
+            GameObject labelObj = new GameObject("SharedLabelQ2");
+            labelObj.transform.SetParent(Camera.main.transform); // <- non protocolWrapper
+            sharedLabelQ2 = labelObj.AddComponent<TextMeshPro>();
+            sharedLabelQ2.fontSize = 0.15f;
+            sharedLabelQ2.alignment = TextAlignmentOptions.Center;
+            sharedLabelQ2.color = Color.black;
+            sharedLabelQ2.outlineWidth = 0.2f;
+            sharedLabelQ2.outlineColor = Color.white;
+
+            labelObj.transform.localRotation = Quaternion.identity;
+            sharedLabelQ2.gameObject.SetActive(false);
+
+            sharedLabelQ2Background = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            sharedLabelQ2Background.name = "LabelBackground";
+            sharedLabelQ2Background.transform.SetParent(sharedLabelQ2.transform);
+            sharedLabelQ2Background.transform.localPosition = new Vector3(0f, 0f, 0.01f); // dietro al testo
+            sharedLabelQ2Background.transform.localScale = new Vector3(0.25f, 0.1f, 1f);
+
+            var bgRenderer = sharedLabelQ2Background.GetComponent<Renderer>();
+            var mat = new Material(Shader.Find("Unlit/Transparent"));
+            bgRenderer.material = mat;
+            bgRenderer.material.color = new Color(0.85f, 0.85f, 0.85f, 0.1f);
+        }
+
     }
 
 
@@ -453,6 +452,31 @@ public class QueryVisualizer : MonoBehaviour
         if (sharedLabel != null)
             sharedLabel.gameObject.SetActive(false);
     }
+
+    public void UpdateSharedLabelQ2(string content, Vector3 labelPosition)
+    {
+        if (sharedLabelQ2 != null)
+        {
+            sharedLabelQ2.text = content;
+
+            // Posizionamento più evidente: ancora più avanti verso l'utente
+            Vector3 offsetUp = Vector3.up * 0.05f;
+            Vector3 offsetForward = Camera.main.transform.forward * 0.4f; // aumentato
+            Vector3 newPos = labelPosition + offsetUp + offsetForward;
+
+            sharedLabelQ2.transform.position = newPos;
+            sharedLabelQ2.transform.rotation = Quaternion.LookRotation(sharedLabelQ2.transform.position - Camera.main.transform.position);
+
+            sharedLabelQ2.gameObject.SetActive(true);
+        }
+    }
+
+    public void HideSharedLabelQ2()
+    {
+        if (sharedLabelQ2 != null)
+            sharedLabelQ2.gameObject.SetActive(false);
+    }
+
 
     public void HideHistogramAnimated()
     {

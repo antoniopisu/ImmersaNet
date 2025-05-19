@@ -10,6 +10,9 @@ public class ShowLabelOnHover : MonoBehaviour
     public float byteValue;
     public QueryVisualizer visualizer;
 
+    // Flag opzionale per distinguere le query
+    public bool isQuery2 = false;
+
     void Awake()
     {
         var interactable = GetComponent<XRBaseInteractable>();
@@ -26,12 +29,22 @@ public class ShowLabelOnHover : MonoBehaviour
         {
             float tb = byteValue / 1_000_000_000_000f;
             string content = $"{ipText}\n{tb:F2} TB";
-            visualizer.UpdateSharedLabel(content, transform.position);
+
+            if (isQuery2)
+                visualizer.UpdateSharedLabelQ2(content, transform.position);
+            else
+                visualizer.UpdateSharedLabel(content, transform.position);
         }
     }
 
     public void OnHoverExit()
     {
-        visualizer?.HideSharedLabel();
+        if (visualizer != null)
+        {
+            if (isQuery2)
+                visualizer.HideSharedLabelQ2();
+            else
+                visualizer.HideSharedLabel();
+        }
     }
 }
