@@ -242,18 +242,22 @@ public class QueryVisualizer : MonoBehaviour
         Debug.Log("Bolle dei protocolli generate.");
     }
 
-    Color GetHeatmapColor(float valueInTB)
+    Color GetHeatmapColor(float value, float min, float max)
     {
-        if (valueInTB == 0f)
+        if (value <= 0f)
             return Color.blue;
-        else if (valueInTB < 2e-9f)
-            return Color.cyan;
-        else if (valueInTB < 1.6e-7f)
-            return Color.green;
-        else if (valueInTB < 3.4e-7f)
-            return Color.yellow;
+
+        float logValue = Mathf.Log10(Mathf.Max(value, min));
+        float normalized = Mathf.InverseLerp(Mathf.Log10(min), Mathf.Log10(max), logValue);
+
+        if (normalized < 0.25f)
+            return Color.Lerp(Color.blue, Color.cyan, normalized / 0.25f);
+        else if (normalized < 0.5f)
+            return Color.Lerp(Color.cyan, Color.green, (normalized - 0.25f) / 0.25f);
+        else if (normalized < 0.75f)
+            return Color.Lerp(Color.green, Color.yellow, (normalized - 0.5f) / 0.25f);
         else
-            return Color.red;
+            return Color.Lerp(Color.yellow, Color.red, (normalized - 0.75f) / 0.25f);
     }
 
     public void GenerateHeatmap()
@@ -270,13 +274,13 @@ public class QueryVisualizer : MonoBehaviour
         GameObject wrapperGO = new GameObject("HeatmapWrapper");
         protocolWrapper = wrapperGO.transform;
 
-        // Posizionamento davanti alla camera (senza offset verticale)
+        // Posizionamento davanti alla camera come pannello verticale
         Transform cam = Camera.main.transform;
         Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
         protocolWrapper.position = cam.position + forward * 3f;
-        protocolWrapper.rotation = Quaternion.LookRotation(forward) * Quaternion.Euler(-90f, 0f, 0f);
+        protocolWrapper.rotation = Quaternion.LookRotation(forward); // Non ruotiamo in basso
 
-        // Step 1: Mappa traffico (Src_IP, Dst_IP) -> byte
+        // Step 1: Costruzione mappa traffico (Src, Dst) -> valore
         Dictionary<(string, string), float> trafficMap = new Dictionary<(string, string), float>();
         foreach (var row in loadData.data)
         {
@@ -292,7 +296,21 @@ public class QueryVisualizer : MonoBehaviour
             }
         }
 
-        // Step 2: IP unici
+        // Calcolo min e max dinamici
+        float min = float.MaxValue;
+        float max = float.MinValue;
+        foreach (var val in trafficMap.Values)
+        {
+            if (val > 0)
+            {
+                min = Mathf.Min(min, val);
+                max = Mathf.Max(max, val);
+            }
+        }
+        min = Mathf.Max(min, 1f); // Evita log(0)
+        Debug.Log($"[Heatmap] Min traffic: {min}, Max traffic: {max}");
+
+        // IP unici
         List<string> srcIPs = trafficMap.Keys.Select(k => k.Item1).Distinct().ToList();
         List<string> dstIPs = trafficMap.Keys.Select(k => k.Item2).Distinct().ToList();
 
@@ -300,72 +318,71 @@ public class QueryVisualizer : MonoBehaviour
         int numCols = srcIPs.Count;
         int numRows = dstIPs.Count;
 
-        // Offset per centrare la griglia
         Vector3 centerOffset = new Vector3(
             (numCols - 1) * spacing / 2f,
-            0f,
-            (numRows - 1) * spacing / 2f
+            (numRows - 1) * spacing / 2f,
+            0f
         );
 
-        // Etichette colonna (sorgente)
+        // Etichette colonne (sorgenti, sopra)
         for (int x = 0; x < numCols; x++)
         {
             GameObject labelX = new GameObject("SrcLabel");
             labelX.transform.SetParent(protocolWrapper);
-            labelX.transform.localPosition = new Vector3(x * spacing, spacing * 0.6f, -spacing) - centerOffset;
+            labelX.transform.localPosition = new Vector3(x * spacing, spacing * (numRows + 0.5f), 0) - centerOffset;
 
             var textX = labelX.AddComponent<TextMeshPro>();
             textX.text = srcIPs[x];
-            textX.fontSize = 0.2f;
+            textX.fontSize = 0.1f;
             textX.alignment = TextAlignmentOptions.Center;
             textX.rectTransform.sizeDelta = new Vector2(1, 1);
         }
 
-        // Etichette riga (destinazione)
-        for (int z = 0; z < numRows; z++)
+        // Etichette righe (destinazioni, sinistra)
+        for (int y = 0; y < numRows; y++)
         {
-            GameObject labelZ = new GameObject("DstLabel");
-            labelZ.transform.SetParent(protocolWrapper);
-            labelZ.transform.localPosition = new Vector3(-spacing, 0, z * spacing) - centerOffset;
+            GameObject labelY = new GameObject("DstLabel");
+            labelY.transform.SetParent(protocolWrapper);
+            labelY.transform.localPosition = new Vector3(-spacing, y * spacing, 0) - centerOffset;
 
-            var textZ = labelZ.AddComponent<TextMeshPro>();
-            textZ.text = dstIPs[z];
-            textZ.fontSize = 0.2f;
-            textZ.alignment = TextAlignmentOptions.Right;
-            textZ.rectTransform.sizeDelta = new Vector2(1, 1);
+            var textY = labelY.AddComponent<TextMeshPro>();
+            textY.text = dstIPs[y];
+            textY.fontSize = 0.1f;
+            textY.alignment = TextAlignmentOptions.Right;
+            textY.rectTransform.sizeDelta = new Vector2(1, 1);
         }
 
         // Celle
         for (int x = 0; x < numCols; x++)
         {
-            for (int z = 0; z < numRows; z++)
+            for (int y = 0; y < numRows; y++)
             {
                 string src = srcIPs[x];
-                string dst = dstIPs[z];
+                string dst = dstIPs[y];
                 float value = trafficMap.ContainsKey((src, dst)) ? trafficMap[(src, dst)] : 0f;
-                float valueInTB = value / 1e12f;
 
                 GameObject cell = GameObject.CreatePrimitive(PrimitiveType.Quad);
                 cell.transform.SetParent(protocolWrapper);
                 cell.transform.localScale = Vector3.one * spacing * 0.9f;
-                cell.transform.localPosition = new Vector3(x * spacing, 0, z * spacing) - centerOffset;
+                cell.transform.localPosition = new Vector3(x * spacing, y * spacing, 0) - centerOffset;
+                cell.transform.localRotation = Quaternion.identity;
 
-                Color color = GetHeatmapColor(valueInTB);
+                // Colore
+                Color color = GetHeatmapColor(value, min, max);
+
+                // Materiale unlit
                 var renderer = cell.GetComponent<Renderer>();
                 Material mat = new Material(Shader.Find("Unlit/Color"));
                 mat.color = color;
                 renderer.material = mat;
-                if (mat == null)
-                    Debug.LogError("SHADER NON TROVATO!");
 
+                // Debug
+                float logValue = Mathf.Log10(Mathf.Max(value, min));
+                float normalized = Mathf.InverseLerp(Mathf.Log10(min), Mathf.Log10(max), logValue);
+                Debug.Log($"[Heatmap] {src}->{dst}: {value} Byte/s -> norm: {normalized:F2} -> color: {color}");
             }
         }
     }
-
-
-
-
-
 
 
 
