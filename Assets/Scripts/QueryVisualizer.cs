@@ -355,10 +355,53 @@ public class QueryVisualizer : MonoBehaviour
             }
         }
 
+        // Titolo sopra la heatmap
+        GameObject titleLabel = new GameObject("HeatmapTitle");
+        titleLabel.transform.SetParent(protocolWrapper);
+
+        var titleText = titleLabel.AddComponent<TextMeshPro>();
+        titleText.text = "Heatmap del Traffico tra IP";
+        titleText.fontSize = 0.6f;
+        titleText.color = Color.white;
+        titleText.alignment = TextAlignmentOptions.Center;
+        titleText.outlineWidth = 0.2f;
+        titleText.outlineColor = Color.black;
+
+        // Posizionato al centro, sopra la griglia
+        titleLabel.transform.localPosition = new Vector3(0f, (numRows * spacing / 2f) + 0.1f, 0f);
+        titleLabel.transform.localRotation = Quaternion.LookRotation(titleLabel.transform.position - cam.position);
+
+        // Etichetta asse X (Src_IP) – orizzontale, vicina alla base
+        GameObject xAxisLabel = new GameObject("X_Label_SrcIP");
+        xAxisLabel.transform.SetParent(protocolWrapper);
+        var xText = xAxisLabel.AddComponent<TextMeshPro>();
+        xText.text = "Indirizzi Sorgente (Src_IP)";
+        xText.fontSize = 0.5f;
+        xText.color = Color.white;
+        xText.alignment = TextAlignmentOptions.Center;
+
+        // Posizionata al centro lungo l'asse X, sotto la heatmap
+        xAxisLabel.transform.localPosition = new Vector3(0f, -(numRows * spacing / 2f) - 0.1f, 0f);
+        xAxisLabel.transform.localRotation = Quaternion.LookRotation(xAxisLabel.transform.position - cam.position);
+
+        // Etichetta asse Y (Dst_IP) – verticale
+        GameObject yAxisLabel = new GameObject("Y_Label_DstIP");
+        yAxisLabel.transform.SetParent(protocolWrapper);
+        var yText = yAxisLabel.AddComponent<TextMeshPro>();
+        yText.text = "Indirizzi Destinazione (Dst_IP)";
+        yText.fontSize = 0.5f;
+        yText.color = Color.white;
+        yText.alignment = TextAlignmentOptions.Center;
+
+        // Posizionata al centro lungo l'asse Y, a sinistra, con rotazione verticale
+        yAxisLabel.transform.localPosition = new Vector3(-(numCols * spacing / 2f) - 0.1f, 0f, 0f);
+        yAxisLabel.transform.localRotation = Quaternion.LookRotation(yAxisLabel.transform.position - cam.position) * Quaternion.Euler(0, 0, 90);
+
+        // Etichetta interattiva (già presente)
         if (sharedLabelQ2 == null)
         {
             GameObject labelObj = new GameObject("SharedLabelQ2");
-            labelObj.transform.SetParent(Camera.main.transform); // <- non protocolWrapper
+            labelObj.transform.SetParent(Camera.main.transform);
             sharedLabelQ2 = labelObj.AddComponent<TextMeshPro>();
             sharedLabelQ2.fontSize = 0.15f;
             sharedLabelQ2.alignment = TextAlignmentOptions.Center;
@@ -372,19 +415,85 @@ public class QueryVisualizer : MonoBehaviour
             sharedLabelQ2Background = GameObject.CreatePrimitive(PrimitiveType.Quad);
             sharedLabelQ2Background.name = "LabelBackground";
             sharedLabelQ2Background.transform.SetParent(sharedLabelQ2.transform);
-            sharedLabelQ2Background.transform.localPosition = new Vector3(0f, 0f, 0.01f); // dietro al testo
+            sharedLabelQ2Background.transform.localPosition = new Vector3(0f, 0f, 0.01f);
             sharedLabelQ2Background.transform.localScale = new Vector3(0.25f, 0.1f, 1f);
 
             var bgRenderer = sharedLabelQ2Background.GetComponent<Renderer>();
             var mat = new Material(Shader.Find("Unlit/Transparent"));
             bgRenderer.material = mat;
-            bgRenderer.material.color = new Color(0.85f, 0.85f, 0.85f, 0.1f);
+            bgRenderer.material.color = new Color(0.9f, 0.9f, 0.9f, 0.5f);
         }
 
+        // === WRAPPER DELLA LEGENDA ===
+        GameObject legendWrapperGO = new GameObject("HeatmapLegendWrapper");
+        Transform legendWrapper = legendWrapperGO.transform;
+        legendWrapper.SetParent(protocolWrapper);
+
+        // Posiziona il wrapper a destra della heatmap
+        legendWrapper.localPosition = new Vector3((numCols * spacing / 2f) + 0.2f, -0.2f, 0f);
+        legendWrapper.localRotation = Quaternion.identity;
+        legendWrapper.localScale = Vector3.one;
+
+        // Colori e descrizioni
+        string[] levels = new string[]
+        {
+    "Traffico nullo o molto basso",
+    "Traffico basso",
+    "Traffico medio",
+    "Traffico alto",
+    "Traffico molto alto"
+        };
+
+        Color[] colors = new Color[]
+        {
+    Color.blue,
+    Color.cyan,
+    Color.green,
+    Color.yellow,
+    Color.red
+        };
+
+        // Posizione iniziale nel wrapper
+        Vector3 legendStartLocal = new Vector3(0f, (numRows * spacing / 2f), 0f);
+
+        for (int i = 0; i < levels.Length; i++)
+        {
+            // === CELLA COLORATA ===
+            GameObject legendCell = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            legendCell.name = $"LegendCell_{i}";
+            legendCell.transform.SetParent(legendWrapper);
+            legendCell.transform.localScale = Vector3.one * spacing * 2f;
+            legendCell.transform.localPosition = legendStartLocal + new Vector3(0f, -i * 0.15f, 0f);
+            legendCell.transform.localRotation = Quaternion.identity;
+
+            var mat = new Material(Shader.Find("Unlit/Color"));
+            mat.color = colors[i];
+            legendCell.GetComponent<Renderer>().material = mat;
+
+            // === ETICHETTA DESCRITTIVA ===
+            GameObject legendLabel = new GameObject($"LegendLabel_{i}");
+            legendLabel.transform.SetParent(legendWrapper);
+            legendLabel.transform.localScale = Vector3.one * 0.01f; // molto importante per visibilità in 3D
+
+            var textMesh = legendLabel.AddComponent<TextMeshPro>();
+            textMesh.text = levels[i];
+            textMesh.fontSize = 20f;
+            textMesh.color = Color.white;
+            textMesh.outlineWidth = 0.2f;
+            textMesh.outlineColor = Color.black;
+            textMesh.alignment = TextAlignmentOptions.Left;
+            textMesh.textWrappingMode = TextWrappingModes.NoWrap;
+            textMesh.enableAutoSizing = false;
+
+            legendLabel.transform.localPosition = legendCell.transform.localPosition + new Vector3(0.15f, 0f, 0f);
+            legendLabel.transform.localRotation = Quaternion.identity;
+        }
+
+
+
+
+
     }
-
-
-
 
     private void CreateXAxisLabel()
     {
@@ -459,10 +568,10 @@ public class QueryVisualizer : MonoBehaviour
         {
             sharedLabelQ2.text = content;
 
-            // Posizionamento più evidente: ancora più avanti verso l'utente
-            Vector3 offsetUp = Vector3.up * 0.05f;
-            Vector3 offsetForward = Camera.main.transform.forward * 0.4f; // aumentato
-            Vector3 newPos = labelPosition + offsetUp + offsetForward;
+            // Calcola direzione dalla cella verso la camera e normalizzala
+            Vector3 toCameraDir = (Camera.main.transform.position - labelPosition).normalized;
+            Vector3 offset = toCameraDir * 0.2f + Vector3.up * 0.05f;
+            Vector3 newPos = labelPosition + offset;
 
             sharedLabelQ2.transform.position = newPos;
             sharedLabelQ2.transform.rotation = Quaternion.LookRotation(sharedLabelQ2.transform.position - Camera.main.transform.position);
