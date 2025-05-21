@@ -6,6 +6,8 @@ using TMPro;
 using System.Linq;
 using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit;
+//using static UnityEditor.PlayerSettings;
+using static UnityEngine.UIElements.UxmlAttributeDescription;
 
 public class QueryVisualizer : MonoBehaviour
 {
@@ -184,8 +186,6 @@ public class QueryVisualizer : MonoBehaviour
                 if (string.IsNullOrEmpty(protoCode))
                     protoCode = "Unknown";
 
-                Debug.Log($"Protocol letto: {protoCode}");
-
                 string protoName = protocolNameMap.TryGetValue(protoCode, out var name) ? name : $"Unknown ({protoCode})";
 
                 if (!protocolCount.ContainsKey(protoName))
@@ -195,39 +195,45 @@ public class QueryVisualizer : MonoBehaviour
             }
         }
 
-        Debug.Log("Conteggi protocolli trovati:");
-        foreach (var entry in protocolCount)
-        {
-            Debug.Log($"Protocollo: {entry.Key}, Flussi: {entry.Value}");
-        }
-
-        int totalFlows = 0;
-        foreach (var val in protocolCount.Values)
-            totalFlows += val;
+        int totalFlows = protocolCount.Values.Sum();
+        int maxCount = protocolCount.Values.Max();
+        float minScale = 0.3f;
+        float maxScale = 0.8f;
 
         int i = 0;
         foreach (var entry in protocolCount)
         {
-            float angle = i * Mathf.PI * 2f / protocolCount.Count;
-            Vector3 pos = new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * 0.05f;
+            float percentage = (float)entry.Value / totalFlows;
+            float normalized = (float)entry.Value / maxCount;
+            float scaledSize = Mathf.Lerp(minScale, maxScale, normalized);
 
-            GameObject bubble = Instantiate(protocolBubblePrefab, protocolWrapper);
-            bubble.transform.localPosition = pos + Vector3.up * UnityEngine.Random.Range(-0.1f, 0.1f);
-            bubble.transform.localRotation = Quaternion.identity;
-            bubble.transform.localScale = Vector3.one * 0.2f;
+            float angle = i * Mathf.PI * 2f / protocolCount.Count;
+            float distance = 0.1f + scaledSize * 0.2f;
+
+            // Posizione in cerchio relativa alla rotazione della camera
+            Vector3 localPos = new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * distance;
+            Vector3 worldPos = protocolWrapper.position + protocolWrapper.rotation * localPos + Vector3.up * UnityEngine.Random.Range(-0.1f, 0.1f);
+
+            GameObject bubble = Instantiate(protocolBubblePrefab);
+            bubble.transform.position = worldPos;
+            bubble.transform.rotation = Quaternion.identity;
+            bubble.transform.localScale = Vector3.one * scaledSize;
+            //bubble.transform.SetParent(protocolWrapper);
 
             var script = bubble.GetComponent<ProtocolBubble>();
-            script.SetInfo(entry.Key, entry.Value, (float)entry.Value / totalFlows);
+            script.SetInfo(entry.Key, entry.Value, percentage);
 
-            bubble.AddComponent<FloatingMotion>();
+            // Collider di sicurezza se manca
+            if (bubble.GetComponent<Collider>() == null)
+                bubble.AddComponent<SphereCollider>();
 
             Rigidbody bubbleRb = bubble.GetComponent<Rigidbody>();
             if (bubbleRb == null)
-            {
                 bubbleRb = bubble.AddComponent<Rigidbody>();
-            }
+
             bubbleRb.useGravity = false;
             bubbleRb.isKinematic = false;
+            bubbleRb.constraints = RigidbodyConstraints.None;
 
             var bubbleGrab = bubble.GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
             if (bubbleGrab == null)
@@ -243,6 +249,7 @@ public class QueryVisualizer : MonoBehaviour
 
         Debug.Log("Bolle dei protocolli generate.");
     }
+
 
     Color GetHeatmapColor(float value, float min, float max)
     {
@@ -419,9 +426,10 @@ public class QueryVisualizer : MonoBehaviour
             sharedLabelQ2Background.transform.localScale = new Vector3(0.25f, 0.1f, 1f);
 
             var bgRenderer = sharedLabelQ2Background.GetComponent<Renderer>();
-            var mat = new Material(Shader.Find("Unlit/Transparent"));
+            Material mat = Resources.Load<Material>("Materials/BiancoPanelHeat");
             bgRenderer.material = mat;
-            bgRenderer.material.color = new Color(0.9f, 0.9f, 0.9f, 0.5f);
+
+            //bgRenderer.material.color = new Color(0.9f, 0.9f, 0.9f, 0.5f);
         }
 
         // === WRAPPER DELLA LEGENDA ===
