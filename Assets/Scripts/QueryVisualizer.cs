@@ -249,7 +249,7 @@ public class QueryVisualizer : MonoBehaviour
             var script = bubble.GetComponent<ProtocolBubble>();
             script.SetInfo(entry.Key, entry.Value, percentage);
 
-            // Assicurati che il prefab NON abbia altri XRGrabInteractable o Rigidbody attivi!
+            
             if (bubble.TryGetComponent<Rigidbody>(out var rbChild)) Destroy(rbChild);
             if (bubble.TryGetComponent<Collider>(out var colChild)) Destroy(colChild);
             if (bubble.TryGetComponent<XRGrabInteractable>(out var grabChild)) Destroy(grabChild);
@@ -642,4 +642,88 @@ public class QueryVisualizer : MonoBehaviour
 
         Debug.Log("Istogramma nascosto.");
     }
+
+    public void HideProtocolBubblesAnimated()
+    {
+        if (protocolWrapper == null) return;
+        StartCoroutine(HideProtocolBubblesRoutine());
+    }
+
+    private IEnumerator HideProtocolBubblesRoutine()
+    {
+        float duration = 0.5f;
+        float elapsed = 0f;
+
+        Vector3 originalScale = protocolWrapper.localScale;
+
+        while (elapsed < duration)
+        {
+            float t = elapsed / duration;
+            protocolWrapper.localScale = Vector3.Lerp(originalScale, Vector3.zero, t);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        protocolWrapper.localScale = Vector3.zero;
+
+        foreach (Transform child in protocolWrapper)
+        {
+            Destroy(child.gameObject);
+        }
+
+        Destroy(protocolWrapper.gameObject);
+        protocolWrapper = null;
+        protocolBubblesGenerated = false;
+
+        Debug.Log("Bolle dei protocolli nascoste.");
+    }
+
+    public void HideHeatmapAnimated()
+    {
+        if (protocolWrapper == null) return;
+        StartCoroutine(HideHeatmapRoutine());
+    }
+
+    private IEnumerator HideHeatmapRoutine()
+    {
+        float duration = 0.5f;
+        float elapsed = 0f;
+
+        Vector3 originalScale = protocolWrapper.localScale;
+
+        while (elapsed < duration)
+        {
+            float t = elapsed / duration;
+            protocolWrapper.localScale = Vector3.Lerp(originalScale, Vector3.zero, t);
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        protocolWrapper.localScale = Vector3.zero;
+
+        foreach (Transform child in protocolWrapper)
+        {
+            Destroy(child.gameObject);
+        }
+
+        Destroy(protocolWrapper.gameObject);
+        protocolWrapper = null;
+
+        if (sharedLabelQ2 != null)
+        {
+            Destroy(sharedLabelQ2.gameObject);
+            sharedLabelQ2 = null;
+        }
+
+        if (sharedLabelQ2Background != null)
+        {
+            Destroy(sharedLabelQ2Background.gameObject);
+            sharedLabelQ2Background = null;
+        }
+
+        Debug.Log("Heatmap nascosta.");
+    }
+
+
 }
+
