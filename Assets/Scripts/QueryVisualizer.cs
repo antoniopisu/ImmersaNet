@@ -8,6 +8,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit;
 //using static UnityEditor.PlayerSettings;
 using static UnityEngine.UIElements.UxmlAttributeDescription;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
 public class QueryVisualizer : MonoBehaviour
 {
@@ -25,6 +26,7 @@ public class QueryVisualizer : MonoBehaviour
     private Transform protocolWrapper;
     private TextMeshPro sharedLabel;
     private GameObject sharedLabelQ2Background;
+    private bool protocolBubblesGenerated = false;
 
     public int axisFontSize = 1;
     public float axisLabelOffset = 0f;
@@ -83,7 +85,7 @@ public class QueryVisualizer : MonoBehaviour
             grab.interactionManager = FindAnyObjectByType<XRInteractionManager>();
             grab.useDynamicAttach = true;
         }
-
+        
         if (anchor == null)
         {
             GameObject anchorGO = new GameObject("HistogramAnchor");
@@ -157,6 +159,7 @@ public class QueryVisualizer : MonoBehaviour
         Debug.Log("Istogramma generato con " + index + " barre.");
     }
 
+
     public void GenerateProtocolBubbles()
     {
         if (!loadData.isLoaded)
@@ -165,16 +168,11 @@ public class QueryVisualizer : MonoBehaviour
             return;
         }
 
-        if (protocolWrapper != null)
-            Destroy(protocolWrapper.gameObject);
-
-        GameObject wrapperGO = new GameObject("ProtocolBubbleWrapper");
-        protocolWrapper = wrapperGO.transform;
-
-        Transform cam = Camera.main.transform;
-        Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
-        protocolWrapper.position = cam.position + forward * 1.5f + Vector3.down * 0.2f;
-        protocolWrapper.rotation = Quaternion.LookRotation(forward);
+        if (protocolBubblesGenerated)
+        {
+            Debug.Log("Le bolle sono già presenti, non vengono rigenerate.");
+            return;
+        }
 
         Dictionary<string, int> protocolCount = new Dictionary<string, int>();
         foreach (var row in loadData.data)
@@ -182,9 +180,7 @@ public class QueryVisualizer : MonoBehaviour
             if (row.TryGetValue("Protocol", out string protoCode))
             {
                 protoCode = protoCode.Trim();
-
-                if (string.IsNullOrEmpty(protoCode))
-                    protoCode = "Unknown";
+                if (string.IsNullOrEmpty(protoCode)) protoCode = "Unknown";
 
                 string protoName = protocolNameMap.TryGetValue(protoCode, out var name) ? name : $"Unknown ({protoCode})";
 
@@ -200,6 +196,10 @@ public class QueryVisualizer : MonoBehaviour
         float minScale = 0.3f;
         float maxScale = 0.8f;
 
+        Transform cam = Camera.main.transform;
+        Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
+        Vector3 basePos = cam.position + forward * 1.5f + Vector3.down * 0.2f;
+
         int i = 0;
         foreach (var entry in protocolCount)
         {
@@ -209,46 +209,63 @@ public class QueryVisualizer : MonoBehaviour
 
             float angle = i * Mathf.PI * 2f / protocolCount.Count;
             float distance = 0.1f + scaledSize * 0.2f;
+            Vector3 offset = new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * distance + Vector3.up * UnityEngine.Random.Range(-0.1f, 0.1f);
+            Vector3 worldPos = basePos + offset;
 
-            // Posizione in cerchio relativa alla rotazione della camera
-            Vector3 localPos = new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * distance;
-            Vector3 worldPos = protocolWrapper.position + protocolWrapper.rotation * localPos + Vector3.up * UnityEngine.Random.Range(-0.1f, 0.1f);
+            // === CREAZIONE DEL WRAPPER ===
+            GameObject wrapper = new GameObject($"ProtocolBubbleWrapper_{entry.Key}");
+            wrapper.transform.position = worldPos;
+            wrapper.transform.rotation = Quaternion.identity;
+            wrapper.transform.localScale = Vector3.one;
 
+            // Collider (approssimativo, per il grab)
+            SphereCollider col = wrapper.AddComponent<SphereCollider>();
+            col.radius = scaledSize / 2f;
+            col.center = Vector3.zero;
+
+            // Rigidbody
+            Rigidbody rb = wrapper.AddComponent<Rigidbody>();
+            rb.useGravity = false;
+            rb.isKinematic = false;
+            rb.constraints = RigidbodyConstraints.FreezeRotation;
+            rb.mass = 1f;
+            rb.linearDamping = 2f;
+            rb.angularDamping = 2f;
+
+            // XRGrabInteractable
+            var grab = wrapper.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
+            grab.interactionLayers = InteractionLayerMask.GetMask("Default");
+            grab.interactionManager = FindAnyObjectByType<XRInteractionManager>();
+            grab.useDynamicAttach = false;
+            grab.movementType = XRBaseInteractable.MovementType.Instantaneous;
+
+            // === SFERA COME FIGLIA ===
             GameObject bubble = Instantiate(protocolBubblePrefab);
-            bubble.transform.position = worldPos;
-            bubble.transform.rotation = Quaternion.identity;
+            bubble.transform.SetParent(wrapper.transform, worldPositionStays: false);
+            bubble.transform.localPosition = Vector3.zero;
+            bubble.transform.localRotation = Quaternion.identity;
             bubble.transform.localScale = Vector3.one * scaledSize;
-            //bubble.transform.SetParent(protocolWrapper);
 
             var script = bubble.GetComponent<ProtocolBubble>();
             script.SetInfo(entry.Key, entry.Value, percentage);
 
-            // Collider di sicurezza se manca
-            if (bubble.GetComponent<Collider>() == null)
-                bubble.AddComponent<SphereCollider>();
-
-            Rigidbody bubbleRb = bubble.GetComponent<Rigidbody>();
-            if (bubbleRb == null)
-                bubbleRb = bubble.AddComponent<Rigidbody>();
-
-            bubbleRb.useGravity = false;
-            bubbleRb.isKinematic = false;
-            bubbleRb.constraints = RigidbodyConstraints.None;
-
-            var bubbleGrab = bubble.GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
-            if (bubbleGrab == null)
-            {
-                bubbleGrab = bubble.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
-                bubbleGrab.interactionLayers = InteractionLayerMask.GetMask("Default");
-                bubbleGrab.interactionManager = FindAnyObjectByType<XRInteractionManager>();
-                bubbleGrab.useDynamicAttach = true;
-            }
+            // Assicurati che il prefab NON abbia altri XRGrabInteractable o Rigidbody attivi!
+            if (bubble.TryGetComponent<Rigidbody>(out var rbChild)) Destroy(rbChild);
+            if (bubble.TryGetComponent<Collider>(out var colChild)) Destroy(colChild);
+            if (bubble.TryGetComponent<XRGrabInteractable>(out var grabChild)) Destroy(grabChild);
 
             i++;
         }
 
-        Debug.Log("Bolle dei protocolli generate.");
+        protocolBubblesGenerated = true;
+        Debug.Log("Bolle dei protocolli generate con contenitore individuale.");
     }
+
+
+
+
+
+
 
 
     Color GetHeatmapColor(float value, float min, float max)
