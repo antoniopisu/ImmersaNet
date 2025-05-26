@@ -3,6 +3,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.XR.Interaction.Toolkit.UI;
+using System.Collections.Generic;
 
 public class MenuSpawnerAndToggle : MonoBehaviour
 {
@@ -11,6 +12,9 @@ public class MenuSpawnerAndToggle : MonoBehaviour
     public QueryVisualizer queryVisualizer;
     private GameObject menuCanvas;
     private bool isVisible = false;
+
+    private Dictionary<int, bool> queryStates = new();
+    private Dictionary<int, Image> buttonImages = new();
 
     void Start()
     {
@@ -33,7 +37,6 @@ public class MenuSpawnerAndToggle : MonoBehaviour
         var rt = menuCanvas.GetComponent<RectTransform>();
         rt.sizeDelta = new Vector2(500, 300);
 
-        // Background Panel
         GameObject panel = new GameObject("Background");
         panel.transform.SetParent(menuCanvas.transform, false);
         RectTransform prt = panel.AddComponent<RectTransform>();
@@ -45,7 +48,6 @@ public class MenuSpawnerAndToggle : MonoBehaviour
         bg.color = new Color(0f, 0f, 0f, 0.9f);
         panel.layer = uiLayer;
 
-        // Title
         GameObject label = new GameObject("Label");
         label.transform.SetParent(panel.transform, false);
         var text = label.AddComponent<TextMeshProUGUI>();
@@ -60,13 +62,11 @@ public class MenuSpawnerAndToggle : MonoBehaviour
         text.alignment = TextAlignmentOptions.Center;
         label.layer = uiLayer;
 
-        // Query button labels
         string[] queryNames = new string[]
         {
             "Top Talkers Histogram",
             "Traffic by Protocol",
             "Heatmap Tbyte",
-            //"View All Connections",
             "Suspicious IP Analysis",
             "High Bandwidth Flows",
             "Anomaly Timeline"
@@ -94,7 +94,6 @@ public class MenuSpawnerAndToggle : MonoBehaviour
 
             Button button = buttonGO.AddComponent<Button>();
             Image buttonImage = buttonGO.AddComponent<Image>();
-            buttonImage.color = new Color(0.2f, 0.4f, 1f, 0.8f);
 
             GameObject txtGO = new GameObject("Text");
             txtGO.transform.SetParent(buttonGO.transform, false);
@@ -111,24 +110,39 @@ public class MenuSpawnerAndToggle : MonoBehaviour
             tmp.fontSize = 20;
             tmp.color = Color.white;
 
+            queryStates[i] = false;
+            buttonImages[i] = buttonImage;
+            buttonImage.color = Color.red;
+
             int index = i;
             button.onClick.AddListener(() =>
             {
                 Debug.Log($"Esecuzione {queryNames[index]}");
-                switch (index)
+                bool isActive = queryStates[index];
+
+                if (isActive)
                 {
-                    case 0:
-                        queryVisualizer.GenerateHistogram();
-                        break;
-                    case 1:
-                        queryVisualizer.GenerateProtocolBubbles();
-                        break;
-                    case 2:
-                        queryVisualizer.GenerateHeatmap();
-                        break;
-                    default:
-                        Debug.Log($"Placeholder for query {index + 1}");
-                        break;
+                    switch (index)
+                    {
+                        case 0: queryVisualizer.CloseQuery(QueryType.Histogram); break;
+                        case 1: queryVisualizer.CloseQuery(QueryType.ProtocolBubbles); break;
+                        case 2: queryVisualizer.CloseQuery(QueryType.Heatmap); break;
+                        default: Debug.Log($"Close not implemented for query {index + 1}"); break;
+                    }
+                    buttonImages[index].color = Color.red;
+                    queryStates[index] = false;
+                }
+                else
+                {
+                    switch (index)
+                    {
+                        case 0: queryVisualizer.GenerateHistogram(); break;
+                        case 1: queryVisualizer.GenerateProtocolBubbles(); break;
+                        case 2: queryVisualizer.GenerateHeatmap(); break;
+                        default: Debug.Log($"Open not implemented for query {index + 1}"); break;
+                    }
+                    buttonImages[index].color = Color.green;
+                    queryStates[index] = true;
                 }
             });
         }

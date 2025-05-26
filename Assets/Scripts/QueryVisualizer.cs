@@ -6,9 +6,15 @@ using TMPro;
 using System.Linq;
 using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit;
-//using static UnityEditor.PlayerSettings;
 using static UnityEngine.UIElements.UxmlAttributeDescription;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
+
+public enum QueryType
+{
+    Histogram,
+    ProtocolBubbles,
+    Heatmap
+}
 
 public class QueryVisualizer : MonoBehaviour
 {
@@ -21,9 +27,10 @@ public class QueryVisualizer : MonoBehaviour
     public Material barMaterial;
     public InputActionProperty hideGraphAction;
 
-    private Transform wrapper;
+    private Transform histogramWrapper;
+    private Transform protocolBubbleWrapper;
+    private Transform heatmapWrapper;
     private Transform anchor;
-    private Transform protocolWrapper;
     private TextMeshPro sharedLabel;
     private GameObject sharedLabelQ2Background;
     private bool protocolBubblesGenerated = false;
@@ -32,26 +39,67 @@ public class QueryVisualizer : MonoBehaviour
     public float axisLabelOffset = 0f;
     public TextMeshPro sharedLabelQ2;
 
+    private Dictionary<QueryType, bool> activeQueries = new Dictionary<QueryType, bool>()
+    {
+        { QueryType.Histogram, false },
+        { QueryType.ProtocolBubbles, false },
+        { QueryType.Heatmap, false }
+    };
+
     private static readonly Dictionary<string, string> protocolNameMap = new Dictionary<string, string>
     {
-        { "1", "ICMP" },
-        { "2", "IGMP" },
-        { "6", "TCP" },
-        { "17", "UDP" },
-        { "41", "IPv6" },
-        { "47", "GRE" },
-        { "50", "ESP" },
-        { "51", "AH" },
-        { "58", "ICMPv6" },
-        { "89", "OSPF" }
+        { "1", "ICMP" }, { "2", "IGMP" }, { "6", "TCP" }, { "17", "UDP" },
+        { "41", "IPv6" }, { "47", "GRE" }, { "50", "ESP" }, { "51", "AH" },
+        { "58", "ICMPv6" }, { "89", "OSPF" }
     };
 
     void Update()
     {
         if (hideGraphAction.action != null && hideGraphAction.action.WasPressedThisFrame())
         {
-            HideHistogramAnimated();
+            CloseAllQueries();
         }
+    }
+
+    public void CloseQuery(QueryType type)
+    {
+        switch (type)
+        {
+            case QueryType.Histogram:
+                if (activeQueries[QueryType.Histogram])
+                {
+                    HideHistogramAnimated();
+                    activeQueries[QueryType.Histogram] = false;
+                }
+                break;
+            case QueryType.ProtocolBubbles:
+                if (activeQueries[QueryType.ProtocolBubbles])
+                {
+                    HideProtocolBubblesAnimated();
+                    activeQueries[QueryType.ProtocolBubbles] = false;
+                }
+                break;
+            case QueryType.Heatmap:
+                if (activeQueries[QueryType.Heatmap])
+                {
+                    HideHeatmapAnimated();
+                    activeQueries[QueryType.Heatmap] = false;
+                }
+                break;
+        }
+    }
+
+    public void CloseAllQueries()
+    {
+        foreach (var type in activeQueries.Keys.ToList())
+        {
+            CloseQuery(type);
+        }
+    }
+
+    public void RegisterQuery(QueryType type)
+    {
+        activeQueries[type] = true;
     }
 
     public void GenerateHistogram()
@@ -62,15 +110,15 @@ public class QueryVisualizer : MonoBehaviour
             return;
         }
 
-        if (wrapper == null)
+        if (histogramWrapper == null)
         {
             GameObject wrapperGO = new GameObject("HistogramWrapper");
-            wrapper = wrapperGO.transform;
+            histogramWrapper = wrapperGO.transform;
 
             Transform cam = Camera.main.transform;
             Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
-            wrapper.position = cam.position + forward * 1.2f + Vector3.down * 0.3f + -cam.right * 0.3f;
-            wrapper.rotation = Quaternion.LookRotation(forward);
+            histogramWrapper.position = cam.position + forward * 1.2f + Vector3.down * 0.3f + -cam.right * 0.3f;
+            histogramWrapper.rotation = Quaternion.LookRotation(forward);
 
             var rb = wrapperGO.AddComponent<Rigidbody>();
             rb.isKinematic = true;
@@ -89,7 +137,7 @@ public class QueryVisualizer : MonoBehaviour
         if (anchor == null)
         {
             GameObject anchorGO = new GameObject("HistogramAnchor");
-            anchorGO.transform.SetParent(wrapper);
+            anchorGO.transform.SetParent(histogramWrapper);
             anchor = anchorGO.transform;
             anchor.localPosition = Vector3.zero;
             anchor.localRotation = Quaternion.identity;
@@ -157,6 +205,8 @@ public class QueryVisualizer : MonoBehaviour
         CreateYAxisLabel();
 
         Debug.Log("Istogramma generato con " + index + " barre.");
+        RegisterQuery(QueryType.Histogram);
+
     }
 
 
@@ -168,7 +218,7 @@ public class QueryVisualizer : MonoBehaviour
             return;
         }
 
-        if (protocolBubblesGenerated)
+        if (protocolBubbleWrapper != null)
         {
             Debug.Log("Le bolle sono già presenti, non vengono rigenerate.");
             return;
@@ -200,6 +250,11 @@ public class QueryVisualizer : MonoBehaviour
         Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
         Vector3 basePos = cam.position + forward * 1.5f + Vector3.down * 0.2f;
 
+        GameObject wrapperGO = new GameObject("ProtocolBubbleWrapper");
+        protocolBubbleWrapper = wrapperGO.transform;
+        protocolBubbleWrapper.position = basePos;
+        protocolBubbleWrapper.rotation = Quaternion.identity;
+
         int i = 0;
         foreach (var entry in protocolCount)
         {
@@ -210,21 +265,19 @@ public class QueryVisualizer : MonoBehaviour
             float angle = i * Mathf.PI * 2f / protocolCount.Count;
             float distance = 0.1f + scaledSize * 0.2f;
             Vector3 offset = new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * distance + Vector3.up * UnityEngine.Random.Range(-0.1f, 0.1f);
-            Vector3 worldPos = basePos + offset;
+            Vector3 worldPos = offset;
 
-            // === CREAZIONE DEL WRAPPER ===
-            GameObject wrapper = new GameObject($"ProtocolBubbleWrapper_{entry.Key}");
-            wrapper.transform.position = worldPos;
-            wrapper.transform.rotation = Quaternion.identity;
-            wrapper.transform.localScale = Vector3.one;
+            GameObject bubbleWrapper = new GameObject($"ProtocolBubbleWrapper_{entry.Key}");
+            bubbleWrapper.transform.SetParent(protocolBubbleWrapper, false);
+            bubbleWrapper.transform.localPosition = worldPos;
+            bubbleWrapper.transform.localRotation = Quaternion.identity;
+            bubbleWrapper.transform.localScale = Vector3.one;
 
-            // Collider (approssimativo, per il grab)
-            SphereCollider col = wrapper.AddComponent<SphereCollider>();
+            SphereCollider col = bubbleWrapper.AddComponent<SphereCollider>();
             col.radius = scaledSize / 2f;
             col.center = Vector3.zero;
 
-            // Rigidbody
-            Rigidbody rb = wrapper.AddComponent<Rigidbody>();
+            Rigidbody rb = bubbleWrapper.AddComponent<Rigidbody>();
             rb.useGravity = false;
             rb.isKinematic = false;
             rb.constraints = RigidbodyConstraints.FreezeRotation;
@@ -232,16 +285,14 @@ public class QueryVisualizer : MonoBehaviour
             rb.linearDamping = 2f;
             rb.angularDamping = 2f;
 
-            // XRGrabInteractable
-            var grab = wrapper.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
+            var grab = bubbleWrapper.AddComponent<XRGrabInteractable>();
             grab.interactionLayers = InteractionLayerMask.GetMask("Default");
             grab.interactionManager = FindAnyObjectByType<XRInteractionManager>();
             grab.useDynamicAttach = false;
             grab.movementType = XRBaseInteractable.MovementType.Instantaneous;
 
-            // === SFERA COME FIGLIA ===
             GameObject bubble = Instantiate(protocolBubblePrefab);
-            bubble.transform.SetParent(wrapper.transform, worldPositionStays: false);
+            bubble.transform.SetParent(bubbleWrapper.transform, false);
             bubble.transform.localPosition = Vector3.zero;
             bubble.transform.localRotation = Quaternion.identity;
             bubble.transform.localScale = Vector3.one * scaledSize;
@@ -249,7 +300,6 @@ public class QueryVisualizer : MonoBehaviour
             var script = bubble.GetComponent<ProtocolBubble>();
             script.SetInfo(entry.Key, entry.Value, percentage);
 
-            
             if (bubble.TryGetComponent<Rigidbody>(out var rbChild)) Destroy(rbChild);
             if (bubble.TryGetComponent<Collider>(out var colChild)) Destroy(colChild);
             if (bubble.TryGetComponent<XRGrabInteractable>(out var grabChild)) Destroy(grabChild);
@@ -257,15 +307,9 @@ public class QueryVisualizer : MonoBehaviour
             i++;
         }
 
-        protocolBubblesGenerated = true;
         Debug.Log("Bolle dei protocolli generate con contenitore individuale.");
+        RegisterQuery(QueryType.ProtocolBubbles);
     }
-
-
-
-
-
-
 
 
     Color GetHeatmapColor(float value, float min, float max)
@@ -294,16 +338,16 @@ public class QueryVisualizer : MonoBehaviour
             return;
         }
 
-        if (protocolWrapper != null)
-            Destroy(protocolWrapper.gameObject);
+        if (heatmapWrapper != null)
+            Destroy(heatmapWrapper.gameObject);
 
         GameObject wrapperGO = new GameObject("HeatmapWrapper");
-        protocolWrapper = wrapperGO.transform;
+        heatmapWrapper = wrapperGO.transform;
 
         Transform cam = Camera.main.transform;
         Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
-        protocolWrapper.position = cam.position + forward * 3f;
-        protocolWrapper.rotation = Quaternion.LookRotation(forward);
+        heatmapWrapper.position = cam.position + forward * 3f;
+        heatmapWrapper.rotation = Quaternion.LookRotation(forward);
 
         Dictionary<(string, string), float> trafficMap = new Dictionary<(string, string), float>();
         foreach (var row in loadData.data)
@@ -354,7 +398,7 @@ public class QueryVisualizer : MonoBehaviour
                 float value = trafficMap.ContainsKey((src, dst)) ? trafficMap[(src, dst)] : 0f;
 
                 GameObject cell = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                cell.transform.SetParent(protocolWrapper);
+                cell.transform.SetParent(heatmapWrapper);
                 cell.transform.localScale = Vector3.one * spacing * 0.9f;
                 cell.transform.localPosition = new Vector3(x * spacing, y * spacing, 0) - centerOffset;
                 cell.transform.localRotation = Quaternion.identity;
@@ -381,7 +425,7 @@ public class QueryVisualizer : MonoBehaviour
 
         // Titolo sopra la heatmap
         GameObject titleLabel = new GameObject("HeatmapTitle");
-        titleLabel.transform.SetParent(protocolWrapper);
+        titleLabel.transform.SetParent(heatmapWrapper);
 
         var titleText = titleLabel.AddComponent<TextMeshPro>();
         titleText.text = "Heatmap del Traffico tra IP";
@@ -391,37 +435,31 @@ public class QueryVisualizer : MonoBehaviour
         titleText.outlineWidth = 0.2f;
         titleText.outlineColor = Color.black;
 
-        // Posizionato al centro, sopra la griglia
         titleLabel.transform.localPosition = new Vector3(0f, (numRows * spacing / 2f) + 0.1f, 0f);
         titleLabel.transform.localRotation = Quaternion.LookRotation(titleLabel.transform.position - cam.position);
 
-        // Etichetta asse X (Src_IP) – orizzontale, vicina alla base
+        // Etichette assi
         GameObject xAxisLabel = new GameObject("X_Label_SrcIP");
-        xAxisLabel.transform.SetParent(protocolWrapper);
+        xAxisLabel.transform.SetParent(heatmapWrapper);
         var xText = xAxisLabel.AddComponent<TextMeshPro>();
         xText.text = "Indirizzi Sorgente (Src_IP)";
         xText.fontSize = 0.5f;
         xText.color = Color.white;
         xText.alignment = TextAlignmentOptions.Center;
-
-        // Posizionata al centro lungo l'asse X, sotto la heatmap
         xAxisLabel.transform.localPosition = new Vector3(0f, -(numRows * spacing / 2f) - 0.1f, 0f);
         xAxisLabel.transform.localRotation = Quaternion.LookRotation(xAxisLabel.transform.position - cam.position);
 
-        // Etichetta asse Y (Dst_IP) – verticale
         GameObject yAxisLabel = new GameObject("Y_Label_DstIP");
-        yAxisLabel.transform.SetParent(protocolWrapper);
+        yAxisLabel.transform.SetParent(heatmapWrapper);
         var yText = yAxisLabel.AddComponent<TextMeshPro>();
         yText.text = "Indirizzi Destinazione (Dst_IP)";
         yText.fontSize = 0.5f;
         yText.color = Color.white;
         yText.alignment = TextAlignmentOptions.Center;
-
-        // Posizionata al centro lungo l'asse Y, a sinistra, con rotazione verticale
         yAxisLabel.transform.localPosition = new Vector3(-(numCols * spacing / 2f) - 0.1f, 0f, 0f);
         yAxisLabel.transform.localRotation = Quaternion.LookRotation(yAxisLabel.transform.position - cam.position) * Quaternion.Euler(0, 0, 90);
 
-        // Etichetta interattiva (già presente)
+        // Label interattiva
         if (sharedLabelQ2 == null)
         {
             GameObject labelObj = new GameObject("SharedLabelQ2");
@@ -445,45 +483,27 @@ public class QueryVisualizer : MonoBehaviour
             var bgRenderer = sharedLabelQ2Background.GetComponent<Renderer>();
             Material mat = Resources.Load<Material>("Materials/BiancoPanelHeat");
             bgRenderer.material = mat;
-
-            //bgRenderer.material.color = new Color(0.9f, 0.9f, 0.9f, 0.5f);
         }
 
-        // === WRAPPER DELLA LEGENDA ===
+        // Legenda
         GameObject legendWrapperGO = new GameObject("HeatmapLegendWrapper");
         Transform legendWrapper = legendWrapperGO.transform;
-        legendWrapper.SetParent(protocolWrapper);
-
-        // Posiziona il wrapper a destra della heatmap
+        legendWrapper.SetParent(heatmapWrapper);
         legendWrapper.localPosition = new Vector3((numCols * spacing / 2f) + 0.2f, -0.2f, 0f);
         legendWrapper.localRotation = Quaternion.identity;
         legendWrapper.localScale = Vector3.one;
 
-        // Colori e descrizioni
-        string[] levels = new string[]
-        {
-    "Traffico nullo o molto basso",
-    "Traffico basso",
-    "Traffico medio",
-    "Traffico alto",
-    "Traffico molto alto"
-        };
+        string[] levels = new string[] {
+        "Traffico nullo o molto basso", "Traffico basso", "Traffico medio", "Traffico alto", "Traffico molto alto"
+    };
+        Color[] colors = new Color[] {
+        Color.blue, Color.cyan, Color.green, Color.yellow, Color.red
+    };
 
-        Color[] colors = new Color[]
-        {
-    Color.blue,
-    Color.cyan,
-    Color.green,
-    Color.yellow,
-    Color.red
-        };
-
-        // Posizione iniziale nel wrapper
         Vector3 legendStartLocal = new Vector3(0f, (numRows * spacing / 2f), 0f);
 
         for (int i = 0; i < levels.Length; i++)
         {
-            // === CELLA COLORATA ===
             GameObject legendCell = GameObject.CreatePrimitive(PrimitiveType.Quad);
             legendCell.name = $"LegendCell_{i}";
             legendCell.transform.SetParent(legendWrapper);
@@ -495,10 +515,9 @@ public class QueryVisualizer : MonoBehaviour
             mat.color = colors[i];
             legendCell.GetComponent<Renderer>().material = mat;
 
-            // === ETICHETTA DESCRITTIVA ===
             GameObject legendLabel = new GameObject($"LegendLabel_{i}");
             legendLabel.transform.SetParent(legendWrapper);
-            legendLabel.transform.localScale = Vector3.one * 0.01f; // molto importante per visibilità in 3D
+            legendLabel.transform.localScale = Vector3.one * 0.01f;
 
             var textMesh = legendLabel.AddComponent<TextMeshPro>();
             textMesh.text = levels[i];
@@ -514,11 +533,9 @@ public class QueryVisualizer : MonoBehaviour
             legendLabel.transform.localRotation = Quaternion.identity;
         }
 
-
-
-
-
+        RegisterQuery(QueryType.Heatmap);
     }
+
 
     private void CreateXAxisLabel()
     {
@@ -574,7 +591,7 @@ public class QueryVisualizer : MonoBehaviour
         if (sharedLabel != null)
         {
             sharedLabel.text = content;
-            Vector3 newPos = new Vector3(barPosition.x, wrapper.position.y + 0.5f, barPosition.z);
+            Vector3 newPos = new Vector3(barPosition.x, histogramWrapper.position.y + 0.5f, barPosition.z);
             sharedLabel.transform.position = newPos;
             sharedLabel.transform.rotation = Quaternion.LookRotation(sharedLabel.transform.position - Camera.main.transform.position);
             sharedLabel.gameObject.SetActive(true);
@@ -614,7 +631,7 @@ public class QueryVisualizer : MonoBehaviour
 
     public void HideHistogramAnimated()
     {
-        if (wrapper == null) return;
+        if (histogramWrapper == null) return;
         StartCoroutine(HideHistogramRoutine());
     }
 
@@ -623,29 +640,33 @@ public class QueryVisualizer : MonoBehaviour
         float duration = 0.5f;
         float elapsed = 0f;
 
-        Vector3 originalScale = wrapper.localScale;
+        Vector3 originalScale = histogramWrapper.localScale;
 
         while (elapsed < duration)
         {
             float t = elapsed / duration;
-            wrapper.localScale = Vector3.Lerp(originalScale, Vector3.zero, t);
+            histogramWrapper.localScale = Vector3.Lerp(originalScale, Vector3.zero, t);
             elapsed += Time.deltaTime;
             yield return null;
         }
 
-        wrapper.localScale = Vector3.zero;
+        histogramWrapper.localScale = Vector3.zero;
 
-        foreach (Transform child in wrapper)
+        foreach (Transform child in histogramWrapper)
         {
             Destroy(child.gameObject);
         }
 
+        Destroy(histogramWrapper.gameObject);
+        histogramWrapper = null;
+
         Debug.Log("Istogramma nascosto.");
     }
 
+
     public void HideProtocolBubblesAnimated()
     {
-        if (protocolWrapper == null) return;
+        if (protocolBubbleWrapper == null) return;
         StartCoroutine(HideProtocolBubblesRoutine());
     }
 
@@ -654,33 +675,32 @@ public class QueryVisualizer : MonoBehaviour
         float duration = 0.5f;
         float elapsed = 0f;
 
-        Vector3 originalScale = protocolWrapper.localScale;
+        Vector3 originalScale = protocolBubbleWrapper.localScale;
 
         while (elapsed < duration)
         {
             float t = elapsed / duration;
-            protocolWrapper.localScale = Vector3.Lerp(originalScale, Vector3.zero, t);
+            protocolBubbleWrapper.localScale = Vector3.Lerp(originalScale, Vector3.zero, t);
             elapsed += Time.deltaTime;
             yield return null;
         }
 
-        protocolWrapper.localScale = Vector3.zero;
+        protocolBubbleWrapper.localScale = Vector3.zero;
 
-        foreach (Transform child in protocolWrapper)
+        foreach (Transform child in protocolBubbleWrapper)
         {
             Destroy(child.gameObject);
         }
 
-        Destroy(protocolWrapper.gameObject);
-        protocolWrapper = null;
-        protocolBubblesGenerated = false;
+        Destroy(protocolBubbleWrapper.gameObject);
+        protocolBubbleWrapper = null;
 
         Debug.Log("Bolle dei protocolli nascoste.");
     }
 
     public void HideHeatmapAnimated()
     {
-        if (protocolWrapper == null) return;
+        if (heatmapWrapper == null) return;
         StartCoroutine(HideHeatmapRoutine());
     }
 
@@ -689,25 +709,25 @@ public class QueryVisualizer : MonoBehaviour
         float duration = 0.5f;
         float elapsed = 0f;
 
-        Vector3 originalScale = protocolWrapper.localScale;
+        Vector3 originalScale = heatmapWrapper.localScale;
 
         while (elapsed < duration)
         {
             float t = elapsed / duration;
-            protocolWrapper.localScale = Vector3.Lerp(originalScale, Vector3.zero, t);
+            heatmapWrapper.localScale = Vector3.Lerp(originalScale, Vector3.zero, t);
             elapsed += Time.deltaTime;
             yield return null;
         }
 
-        protocolWrapper.localScale = Vector3.zero;
+        heatmapWrapper.localScale = Vector3.zero;
 
-        foreach (Transform child in protocolWrapper)
+        foreach (Transform child in heatmapWrapper)
         {
             Destroy(child.gameObject);
         }
 
-        Destroy(protocolWrapper.gameObject);
-        protocolWrapper = null;
+        Destroy(heatmapWrapper.gameObject);
+        heatmapWrapper = null;
 
         if (sharedLabelQ2 != null)
         {
@@ -723,7 +743,6 @@ public class QueryVisualizer : MonoBehaviour
 
         Debug.Log("Heatmap nascosta.");
     }
-
 
 }
 
