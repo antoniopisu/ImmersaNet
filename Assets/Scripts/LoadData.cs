@@ -6,7 +6,7 @@ using TMPro;
 public class LoadData : MonoBehaviour
 {
     public List<Dictionary<string, string>> data = new List<Dictionary<string, string>>();
-    public bool isLoaded = false;           
+    public bool isLoaded = false;
 
     public IEnumerator LoadFile()
     {

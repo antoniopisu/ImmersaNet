@@ -133,7 +133,7 @@ public class QueryVisualizer : MonoBehaviour
             grab.interactionManager = FindAnyObjectByType<XRInteractionManager>();
             grab.useDynamicAttach = true;
         }
-        
+
         if (anchor == null)
         {
             GameObject anchorGO = new GameObject("HistogramAnchor");
@@ -220,7 +220,7 @@ public class QueryVisualizer : MonoBehaviour
 
         if (protocolBubbleWrapper != null)
         {
-            Debug.Log("Le bolle sono già presenti, non vengono rigenerate.");
+            Debug.Log("Le bolle sono gia presenti, non vengono rigenerate.");
             return;
         }
 
@@ -745,4 +745,3 @@ public class QueryVisualizer : MonoBehaviour
     }
 
 }
-

@@ -10,7 +10,7 @@ public class ShowLabelOnHover : MonoBehaviour
     public float byteValue;
     public QueryVisualizer visualizer;
 
-    // Flag opzionale per distinguere le query
+    // Flag per distinguere le query
     public bool isQuery2 = false;
 
     void Awake()

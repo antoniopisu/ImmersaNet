@@ -21,7 +21,7 @@ public class TimelineManager : MonoBehaviour
     private Coroutine timelineRoutine;
     private bool isRunning = false;
     private bool isDragging = false;
-    
+
     void Start()
     {
         StartCoroutine(InitializeTimeline());
