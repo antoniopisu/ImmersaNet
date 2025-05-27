@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using System.Globalization;
+
 
 public class ConnectionInfoPanel : MonoBehaviour
 {
@@ -38,13 +40,36 @@ public class ConnectionInfoPanel : MonoBehaviour
 
     private string FormatInfo(Dictionary<string, string> data)
     {
+        // Mappa protocolli comuni (puoi estendere se vuoi)
+        Dictionary<string, string> protocolNames = new Dictionary<string, string>
+    {
+        { "6", "TCP" },
+        { "17", "UDP" },
+        { "1", "ICMP" },
+        { "2", "IGMP" },
+        { "47", "GRE" },
+        { "50", "ESP" },
+        { "51", "AH" },
+        { "89", "OSPF" }
+    };
+
         string result = "<b>Connection Info</b>\n\n";
         foreach (var entry in data)
         {
             string key = entry.Key;
             string value = entry.Value;
 
-            if (key == "Label" && !value.Equals("Benign", StringComparison.OrdinalIgnoreCase))
+            if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double numericValue))
+            {
+                value = numericValue.ToString("F2", CultureInfo.InvariantCulture);
+            }
+
+            if (key == "Protocol" && protocolNames.ContainsKey(value))
+            {
+                value = $"{protocolNames[value]} ({value})";
+            }
+
+            if (key == "Label" && !value.ToLower().Contains("benign"))
             {
                 result += $"<b>{key}:</b> <color=red>{value}</color>\n";
             }
@@ -53,8 +78,11 @@ public class ConnectionInfoPanel : MonoBehaviour
                 result += $"<b>{key}:</b> {value}\n";
             }
         }
+
         return result;
     }
+
+
 
     private IEnumerator AutoHidePanel(float seconds)
     {
