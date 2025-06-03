@@ -24,6 +24,8 @@ public class VisualizeNetwork : MonoBehaviour
     [Tooltip("Soglia per segnalazione traffico sospetto (99 percentile Flow_Bytes_s)")]
     public double dosThreshold = 0;
 
+    [HideInInspector] public bool visualizationEnabled = false;
+
     private Dictionary<string, GameObject> ipToNode = new Dictionary<string, GameObject>();
     private Dictionary<string, double> ipToCumulativeBytes = new Dictionary<string, double>();
 
@@ -91,6 +93,8 @@ public class VisualizeNetwork : MonoBehaviour
 
     public void VisualizzaReteInTempo(DateTime tempo)
     {
+        if (!visualizationEnabled) return;
+
         foreach (var node in ipToNode.Values)
             node.SetActive(false);
 
@@ -229,17 +233,17 @@ public class VisualizeNetwork : MonoBehaviour
                     interactable.selectEntered.AddListener((args) =>
                     {
                         var info = new Dictionary<string, string>
-                    {
-                        { "Source IP", src },
-                        { "Destination IP", dst },
-                        { "Protocol", row.ContainsKey("Protocol") ? row["Protocol"] : "-" },
-                        { "Flow Bytes/s", row.ContainsKey("Flow_Bytes_s") ? row["Flow_Bytes_s"] : "-" },
-                        { "Duration (ms)", row.ContainsKey("Flow_Duration") ? row["Flow_Duration"] : "-" },
-                        { "Packets/s", row.ContainsKey("Flow_Packets/s") ? row["Flow_Packets/s"] : "-" },
-                        { "Mean IAT", row.ContainsKey("Flow_IAT_Mean") ? row["Flow_IAT_Mean"] : "-" },
-                        { "Down/Up Ratio", row.ContainsKey("Down/Up_Ratio") ? row["Down/Up_Ratio"] : "-" },
-                        { "Label", row.ContainsKey("Label") ? row["Label"] : "-" }
-                    };
+                        {
+                            { "Source IP", src },
+                            { "Destination IP", dst },
+                            { "Protocol", row.ContainsKey("Protocol") ? row["Protocol"] : "-" },
+                            { "Flow Bytes/s", row.ContainsKey("Flow_Bytes_s") ? row["Flow_Bytes_s"] : "-" },
+                            { "Duration (ms)", row.ContainsKey("Flow_Duration") ? row["Flow_Duration"] : "-" },
+                            { "Packets/s", row.ContainsKey("Flow_Packets/s") ? row["Flow_Packets/s"] : "-" },
+                            { "Mean IAT", row.ContainsKey("Flow_IAT_Mean") ? row["Flow_IAT_Mean"] : "-" },
+                            { "Down/Up Ratio", row.ContainsKey("Down/Up_Ratio") ? row["Down/Up_Ratio"] : "-" },
+                            { "Label", row.ContainsKey("Label") ? row["Label"] : "-" }
+                        };
 
                         var infoPanel = FindAnyObjectByType<ConnectionInfoPanel>();
                         if (infoPanel != null)
@@ -247,7 +251,6 @@ public class VisualizeNetwork : MonoBehaviour
                             infoPanel.ShowInfo(info);
                         }
                     });
-                    
 
                     activeLines.Add(new ActiveLine
                     {
@@ -269,7 +272,6 @@ public class VisualizeNetwork : MonoBehaviour
             }
         }
     }
-
 
     private void AddAudioAndPlay(GameObject node)
     {

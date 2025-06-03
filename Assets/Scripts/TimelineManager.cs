@@ -21,10 +21,10 @@ public class TimelineManager : MonoBehaviour
     private Coroutine timelineRoutine;
     private bool isRunning = false;
     private bool isDragging = false;
+    private bool timelineInitialized = false;
 
     void Start()
     {
-        // Impedisce l'avvio se il canvas è disattivato o se lo script è ancora disabled
         if (!gameObject.activeInHierarchy || !enabled) return;
 
         StartCoroutine(InitializeTimeline());
@@ -65,9 +65,9 @@ public class TimelineManager : MonoBehaviour
         }
 
         currentTime = minTime;
-        UpdateTimeUI();
         UpdateSlider();
         UpdateButtonStates();
+        timelineInitialized = true;
     }
 
     void UpdateTimeUI()
@@ -139,8 +139,13 @@ public class TimelineManager : MonoBehaviour
 
         timelineRoutine = StartCoroutine(RunTimeline());
         isRunning = true;
+
+        
+        visualizeNetwork.visualizationEnabled = true;
+
         UpdateButtonStates();
     }
+
 
     public void StopTimeline()
     {
