@@ -19,6 +19,12 @@ public class TutorialManager : MonoBehaviour
     public float larghezzaMargine = 40f;
     public float margineInferiore = 100f;
 
+    [Header("Wrapper VR Panel")]
+    public Transform wrapperPanel;      // WrapperPanel nella scena
+    public Transform playerCamera;      // Tipicamente Camera.main.transform
+    public float distanceFromFace = 1.5f;
+    public float verticalOffset = 0f;
+
     private RectTransform panelRect;
     private RectTransform titoloRect;
     private RectTransform paragrafoRect;
@@ -146,4 +152,16 @@ public class TutorialManager : MonoBehaviour
     {
         SceneManager.LoadScene("SampleScene");
     }
+
+    void LateUpdate()
+    {
+        if (wrapperPanel != null && playerCamera != null)
+        {
+            Vector3 currentPos = wrapperPanel.position;
+            float newY = playerCamera.position.y + verticalOffset;
+
+            wrapperPanel.position = new Vector3(currentPos.x, newY, currentPos.z);
+        }
+    }
+
 }

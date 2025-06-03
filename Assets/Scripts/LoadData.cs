@@ -5,16 +5,17 @@ using TMPro;
 
 public class LoadData : MonoBehaviour
 {
+    public string nomeFileCSV = "nuevo";  
     public List<Dictionary<string, string>> data = new List<Dictionary<string, string>>();
     public bool isLoaded = false;
 
     public IEnumerator LoadFile()
     {
-        TextAsset csvFile = Resources.Load<TextAsset>("nuevo");
+        TextAsset csvFile = Resources.Load<TextAsset>(nomeFileCSV);
 
         if (csvFile == null)
         {
-            Debug.LogError("CSV file not found in Resources.");
+            Debug.LogError("CSV file not found in Resources: " + nomeFileCSV);
             yield break;
         }
 
@@ -30,12 +31,6 @@ public class LoadData : MonoBehaviour
         for (int j = 0; j < headers.Length; j++)
         {
             headers[j] = headers[j].Trim().Replace("\r", "");
-        }
-
-        Debug.Log("Header puliti:");
-        foreach (var h in headers)
-        {
-            //Debug.Log("Header: [" + h + "]");
         }
 
         for (int i = 1; i < lines.Length; i++)
@@ -57,11 +52,7 @@ public class LoadData : MonoBehaviour
 
             data.Add(rowDict);
 
-            // Solo ogni 10 righe lascia tempo al caricamento
-            if (i % 10 == 0)
-            {
-                yield return null;
-            }
+            if (i % 10 == 0) yield return null;
         }
 
         Debug.Log("Dati caricati: " + data.Count);
