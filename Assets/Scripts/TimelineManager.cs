@@ -24,6 +24,9 @@ public class TimelineManager : MonoBehaviour
 
     void Start()
     {
+        // Impedisce l'avvio se il canvas è disattivato o se lo script è ancora disabled
+        if (!gameObject.activeInHierarchy || !enabled) return;
+
         StartCoroutine(InitializeTimeline());
 
         playButton.onClick.AddListener(StartTimeline);

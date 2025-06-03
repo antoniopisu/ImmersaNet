@@ -267,7 +267,7 @@ GameObject:
   - component: {fileID: 4358845570287036376}
   - component: {fileID: 1847149364933675177}
   m_Layer: 5
-  m_Name: InfoPanelPrefab
+  m_Name: PanelNode
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
