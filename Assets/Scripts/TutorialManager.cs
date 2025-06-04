@@ -2,6 +2,7 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using System.Collections;
 
 public class TutorialManager : MonoBehaviour
 {
@@ -20,8 +21,8 @@ public class TutorialManager : MonoBehaviour
     public float margineInferiore = 100f;
 
     [Header("Wrapper VR Panel")]
-    public Transform wrapperPanel;      // WrapperPanel nella scena
-    public Transform playerCamera;      // Tipicamente Camera.main.transform
+    public Transform wrapperPanel;
+    public Transform playerCamera;
     public float distanceFromFace = 1.5f;
     public float verticalOffset = 0f;
 
@@ -31,6 +32,9 @@ public class TutorialManager : MonoBehaviour
 
     private int currentIndex = 0;
     private Color coloreOriginale;
+
+    private CanvasGroup wrapperCanvas;
+    private float fadeDuration = 2f;
 
     private string[] titoli =
     {
@@ -58,11 +62,10 @@ public class TutorialManager : MonoBehaviour
         panelRect = panelTutorial.GetComponent<RectTransform>();
         titoloRect = titoloText.GetComponent<RectTransform>();
         paragrafoRect = paragrafoText.GetComponent<RectTransform>();
+        wrapperCanvas = wrapperPanel.GetComponent<CanvasGroup>();
 
         if (nextButtonBackground != null)
-        {
             coloreOriginale = nextButtonBackground.color;
-        }
 
         AggiornaLayoutTesti();
         UpdatePanel();
@@ -71,6 +74,33 @@ public class TutorialManager : MonoBehaviour
         prevButton.onClick.AddListener(PrevPanel);
 
         prevButton.gameObject.SetActive(false);
+
+        if (wrapperCanvas != null)
+        {
+            wrapperCanvas.alpha = 0f;
+            wrapperPanel.gameObject.SetActive(false);
+        }
+
+        StartCoroutine(MostraDopoUnSecondo());
+    }
+
+    IEnumerator MostraDopoUnSecondo()
+    {
+        yield return new WaitForSeconds(1f);
+
+        wrapperPanel.gameObject.SetActive(true);
+
+        if (wrapperCanvas != null)
+        {
+            float t = 0f;
+            while (t < fadeDuration)
+            {
+                t += Time.deltaTime;
+                wrapperCanvas.alpha = Mathf.Lerp(0f, 1f, t / fadeDuration);
+                yield return null;
+            }
+            wrapperCanvas.alpha = 1f;
+        }
     }
 
     void AggiornaLayoutTesti()
@@ -163,5 +193,4 @@ public class TutorialManager : MonoBehaviour
             wrapperPanel.position = new Vector3(currentPos.x, newY, currentPos.z);
         }
     }
-
 }

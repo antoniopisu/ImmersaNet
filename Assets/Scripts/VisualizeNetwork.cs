@@ -15,6 +15,10 @@ public class VisualizeNetwork : MonoBehaviour
     public int nodesPerLevel = 7;
     public float levelHeight = 1f;
     public float ringRadius = 3f;
+    public Vector3 treeCenterOffset = Vector3.zero;
+    public Transform playerCamera;
+    public float forwardOffset = 10.0f;
+
 
     [Header("Node Scaling Settings")]
     public float minNodeScale = 0.2f;
@@ -40,9 +44,17 @@ public class VisualizeNetwork : MonoBehaviour
 
     void Start()
     {
-        alarmClip = Resources.Load<AudioClip>("Sounds/italy-eas-alarm");
+        alarmClip = Resources.Load<AudioClip>("Sounds/cyber-alarms-synthesized");
+
+        if (playerCamera != null)
+        {
+            Vector3 forwardXZ = new Vector3(playerCamera.forward.x, 0f, playerCamera.forward.z).normalized;
+            treeCenterOffset = playerCamera.position + forwardXZ * forwardOffset;
+        }
+
         StartCoroutine(InitVisualNetwork());
     }
+
 
     IEnumerator InitVisualNetwork()
     {
@@ -73,7 +85,7 @@ public class VisualizeNetwork : MonoBehaviour
                 Mathf.Cos(angle) * ringRadius,
                 level * levelHeight + 0.2f,
                 Mathf.Sin(angle) * ringRadius
-            );
+            ) + treeCenterOffset;
 
             GameObject node = Instantiate(nodePrefab, pos, Quaternion.identity);
             node.name = ip;
