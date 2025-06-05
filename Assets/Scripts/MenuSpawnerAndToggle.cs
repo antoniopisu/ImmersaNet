@@ -153,6 +153,15 @@ public class MenuSpawnerAndToggle : MonoBehaviour
         menuCanvas.SetActive(false);
     }
 
+    public void ResetAllButtons()
+    {
+        foreach (var index in queryStates.Keys)
+        {
+            queryStates[index] = false;
+            if (buttonImages.TryGetValue(index, out var img))
+                img.color = Color.red;
+        }
+    }
     void Update()
     {
         if (gripAction.action != null && gripAction.action.WasPressedThisFrame())

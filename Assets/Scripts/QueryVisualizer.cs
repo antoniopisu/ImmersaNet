@@ -26,6 +26,7 @@ public class QueryVisualizer : MonoBehaviour
     public Transform fixedPosition;
     public Material barMaterial;
     public InputActionProperty hideGraphAction;
+    public MenuSpawnerAndToggle menuSpawner;
 
     private Transform histogramWrapper;
     private Transform protocolBubbleWrapper;
@@ -95,6 +96,9 @@ public class QueryVisualizer : MonoBehaviour
         {
             CloseQuery(type);
         }
+
+        if (menuSpawner != null)
+            menuSpawner.ResetAllButtons();
     }
 
     public void RegisterQuery(QueryType type)
