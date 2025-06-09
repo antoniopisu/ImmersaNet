@@ -35,9 +35,12 @@ public class VisualizeNetwork : MonoBehaviour
     private class ActiveLine
     {
         public GameObject lineObj;
+        public GameObject srcNode;
+        public GameObject dstNode;
         public DateTime startTime;
         public DateTime endTime;
     }
+
 
     private List<ActiveLine> activeLines = new List<ActiveLine>();
 
@@ -194,6 +197,8 @@ public class VisualizeNetwork : MonoBehaviour
                     activeLines.Add(new ActiveLine
                     {
                         lineObj = lineObj,
+                        srcNode = ipToNode[src],
+                        dstNode = ipToNode[dst],
                         startTime = startTime,
                         endTime = endTime
                     });
@@ -211,6 +216,7 @@ public class VisualizeNetwork : MonoBehaviour
             }
         }
     }
+
 
     private void AddAudioAndPlay(GameObject node)
     {
@@ -280,4 +286,18 @@ public class VisualizeNetwork : MonoBehaviour
             Gizmos.DrawSphere(networkWrapper.transform.position, 0.3f);
         }
     }
+
+    void Update()
+    {
+        foreach (var line in activeLines)
+        {
+            if (line.lineObj != null && line.srcNode != null && line.dstNode != null)
+            {
+                LineRenderer lr = line.lineObj.GetComponent<LineRenderer>();
+                lr.SetPosition(0, line.srcNode.transform.position);
+                lr.SetPosition(1, line.dstNode.transform.position);
+            }
+        }
+    }
+
 }
