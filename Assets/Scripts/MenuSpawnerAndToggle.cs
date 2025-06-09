@@ -4,6 +4,8 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.XR.Interaction.Toolkit.UI;
 using System.Collections.Generic;
+using System.Linq;
+
 
 public class MenuSpawnerAndToggle : MonoBehaviour
 {
@@ -155,13 +157,16 @@ public class MenuSpawnerAndToggle : MonoBehaviour
 
     public void ResetAllButtons()
     {
-        foreach (var index in queryStates.Keys)
+        foreach (var index in queryStates.Keys.ToList())
         {
             queryStates[index] = false;
             if (buttonImages.TryGetValue(index, out var img))
+            {
                 img.color = Color.red;
+            }
         }
     }
+
     void Update()
     {
         if (gripAction.action != null && gripAction.action.WasPressedThisFrame())

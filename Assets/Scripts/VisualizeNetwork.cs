@@ -15,10 +15,8 @@ public class VisualizeNetwork : MonoBehaviour
     public int nodesPerLevel = 7;
     public float levelHeight = 1f;
     public float ringRadius = 3f;
-    public Vector3 treeCenterOffset = Vector3.zero;
     public Transform playerCamera;
-    public float forwardOffset = 10.0f;
-
+    public float forwardOffset = 5.0f;
 
     [Header("Node Scaling Settings")]
     public float minNodeScale = 0.2f;
@@ -32,6 +30,7 @@ public class VisualizeNetwork : MonoBehaviour
 
     private Dictionary<string, GameObject> ipToNode = new Dictionary<string, GameObject>();
     private Dictionary<string, double> ipToCumulativeBytes = new Dictionary<string, double>();
+    private GameObject networkWrapper;
 
     private class ActiveLine
     {
@@ -45,21 +44,26 @@ public class VisualizeNetwork : MonoBehaviour
     void Start()
     {
         alarmClip = Resources.Load<AudioClip>("Sounds/cyber-alarms-synthesized");
-
-        if (playerCamera != null)
-        {
-            Vector3 forwardXZ = new Vector3(playerCamera.forward.x, 0f, playerCamera.forward.z).normalized;
-            treeCenterOffset = playerCamera.position + forwardXZ * forwardOffset;
-        }
-
         StartCoroutine(InitVisualNetwork());
     }
-
 
     IEnumerator InitVisualNetwork()
     {
         while (!loadData.isLoaded)
             yield return null;
+
+        networkWrapper = new GameObject("NetworkTreeWrapper");
+        Transform wrapperTransform = networkWrapper.transform;
+
+        Vector3 treeCenter = Vector3.zero;
+        if (playerCamera != null)
+        {
+            Vector3 forwardXZ = new Vector3(playerCamera.forward.x, 0f, playerCamera.forward.z).normalized;
+            treeCenter = playerCamera.position + forwardXZ * forwardOffset;
+        }
+        wrapperTransform.position = new Vector3(treeCenter.x, treeCenter.y, treeCenter.z);
+
+        Debug.Log("[NetworkInit] Wrapper created and placed at: " + wrapperTransform.position);
 
         HashSet<string> ipSet = new HashSet<string>();
         foreach (var row in loadData.data)
@@ -81,13 +85,15 @@ public class VisualizeNetwork : MonoBehaviour
             int indexInLevel = index % nodesPerLevel;
             float angle = indexInLevel * Mathf.PI * 2f / nodesPerLevel;
 
-            Vector3 pos = new Vector3(
+            Vector3 localPos = new Vector3(
                 Mathf.Cos(angle) * ringRadius,
                 level * levelHeight + 0.2f,
                 Mathf.Sin(angle) * ringRadius
-            ) + treeCenterOffset;
+            );
 
-            GameObject node = Instantiate(nodePrefab, pos, Quaternion.identity);
+            GameObject node = Instantiate(nodePrefab, wrapperTransform);
+            node.transform.localPosition = localPos;
+
             node.name = ip;
             ipToNode[ip] = node;
             ipToCumulativeBytes[ip] = 0.0;
@@ -101,6 +107,7 @@ public class VisualizeNetwork : MonoBehaviour
         }
 
         Debug.Log("Rete inizializzata con " + uniqueIPs.Count + " nodi su livelli verticali.");
+        Debug.Log($"[NetworkInit] Wrapper placed at {wrapperTransform.position} relative to player at {playerCamera.position}");
     }
 
     public void VisualizzaReteInTempo(DateTime tempo)
@@ -121,8 +128,10 @@ public class VisualizeNetwork : MonoBehaviour
             return false;
         });
 
+        foreach (var key in new List<string>(ipToCumulativeBytes.Keys))
+            ipToCumulativeBytes[key] = 0;
+
         double maxBytesObserved = 0;
-        int orangeNodeAlerts = 0;
 
         foreach (var row in loadData.data)
         {
@@ -137,48 +146,37 @@ public class VisualizeNetwork : MonoBehaviour
             {
                 string src = row["Src_IP"].Trim();
                 string dst = row["Dst_IP"].Trim();
-                string label = row.ContainsKey("Label") ? row["Label"] : "";
 
                 double bytes = 0;
                 if (row.TryGetValue("Flow_Bytes_s", out string byteStr))
-                {
                     double.TryParse(byteStr, NumberStyles.Float, CultureInfo.InvariantCulture, out bytes);
-                }
 
                 if (ipToCumulativeBytes.ContainsKey(src)) ipToCumulativeBytes[src] += bytes;
                 if (ipToCumulativeBytes.ContainsKey(dst)) ipToCumulativeBytes[dst] += bytes;
 
                 maxBytesObserved = Math.Max(maxBytesObserved, Math.Max(ipToCumulativeBytes[src], ipToCumulativeBytes[dst]));
 
-                if (ipToNode.TryGetValue(src, out GameObject srcNode))
+                if (ipToNode.TryGetValue(src, out GameObject srcNode) && !srcNode.activeSelf)
                 {
-                    if (!srcNode.activeSelf)
+                    srcNode.SetActive(true);
+                    if (!srcNode.GetComponent<AnimatedNodeFlag>().hasAnimated)
                     {
-                        srcNode.SetActive(true);
-                        if (!srcNode.GetComponent<AnimatedNodeFlag>().hasAnimated)
-                        {
-                            StartCoroutine(AnimateNodeAppearance(srcNode));
-                            srcNode.GetComponent<AnimatedNodeFlag>().hasAnimated = true;
-                        }
+                        StartCoroutine(AnimateNodeAppearance(srcNode));
+                        srcNode.GetComponent<AnimatedNodeFlag>().hasAnimated = true;
                     }
                 }
 
-                if (ipToNode.TryGetValue(dst, out GameObject dstNode))
+                if (ipToNode.TryGetValue(dst, out GameObject dstNode) && !dstNode.activeSelf)
                 {
-                    if (!dstNode.activeSelf)
+                    dstNode.SetActive(true);
+                    if (!dstNode.GetComponent<AnimatedNodeFlag>().hasAnimated)
                     {
-                        dstNode.SetActive(true);
-                        if (!dstNode.GetComponent<AnimatedNodeFlag>().hasAnimated)
-                        {
-                            StartCoroutine(AnimateNodeAppearance(dstNode));
-                            dstNode.GetComponent<AnimatedNodeFlag>().hasAnimated = true;
-                        }
+                        StartCoroutine(AnimateNodeAppearance(dstNode));
+                        dstNode.GetComponent<AnimatedNodeFlag>().hasAnimated = true;
                     }
                 }
 
-                bool alreadyExists = activeLines.Exists(l => l.lineObj != null && l.lineObj.name == $"{src}->{dst}");
-
-                if (!alreadyExists && ipToNode.ContainsKey(src) && ipToNode.ContainsKey(dst))
+                if (!activeLines.Exists(l => l.lineObj != null && l.lineObj.name == $"{src}->{dst}"))
                 {
                     GameObject lineObj = Instantiate(linePrefab);
                     lineObj.name = $"{src}->{dst}";
@@ -191,78 +189,7 @@ public class VisualizeNetwork : MonoBehaviour
                     lr.SetPosition(0, start);
                     lr.SetPosition(1, start);
 
-                    if (!label.Trim().Equals("Benign", StringComparison.OrdinalIgnoreCase))
-                    {
-                        lr.startColor = Color.red;
-                        lr.endColor = Color.red;
-
-                        Renderer srcRend = ipToNode[src].GetComponentInChildren<Renderer>();
-                        Renderer dstRend = ipToNode[dst].GetComponentInChildren<Renderer>();
-
-                        if (srcRend != null)
-                        {
-                            srcRend.material.color = Color.red;
-                            AddAudioAndPlay(ipToNode[src]);
-                        }
-                        if (dstRend != null)
-                        {
-                            dstRend.material.color = Color.red;
-                            AddAudioAndPlay(ipToNode[dst]);
-                        }
-                    }
-                    else
-                    {
-                        Color orange = new Color(1f, 0.6f, 0f);
-                        Color red = Color.red;
-
-                        Renderer srcRend = ipToNode[src].GetComponentInChildren<Renderer>();
-                        Renderer dstRend = ipToNode[dst].GetComponentInChildren<Renderer>();
-
-                        if (bytes > dosThreshold)
-                        {
-                            if (srcRend != null && srcRend.material.color != red)
-                                srcRend.material.color = orange;
-
-                            if (dstRend != null && dstRend.material.color != red)
-                                dstRend.material.color = orange;
-
-                            orangeNodeAlerts++;
-                        }
-                    }
-
                     StartCoroutine(AnimateLineDraw(lr, start, end));
-
-                    BoxCollider collider = lineObj.AddComponent<BoxCollider>();
-                    Vector3 midPoint = (start + end) / 2f;
-                    lineObj.transform.position = midPoint;
-                    Vector3 direction = (end - start).normalized;
-                    lineObj.transform.rotation = Quaternion.LookRotation(direction);
-                    collider.size = new Vector3(0.02f, 0.02f, Vector3.Distance(start, end));
-                    collider.center = Vector3.zero;
-
-                    var interactable = lineObj.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRSimpleInteractable>();
-                    interactable.interactionLayers = InteractionLayerMask.GetMask("Default");
-                    interactable.selectEntered.AddListener((args) =>
-                    {
-                        var info = new Dictionary<string, string>
-                        {
-                            { "Source IP", src },
-                            { "Destination IP", dst },
-                            { "Protocol", row.ContainsKey("Protocol") ? row["Protocol"] : "-" },
-                            { "Flow Bytes/s", row.ContainsKey("Flow_Bytes_s") ? row["Flow_Bytes_s"] : "-" },
-                            { "Duration (ms)", row.ContainsKey("Flow_Duration") ? row["Flow_Duration"] : "-" },
-                            { "Packets/s", row.ContainsKey("Flow_Packets/s") ? row["Flow_Packets/s"] : "-" },
-                            { "Mean IAT", row.ContainsKey("Flow_IAT_Mean") ? row["Flow_IAT_Mean"] : "-" },
-                            { "Down/Up Ratio", row.ContainsKey("Down/Up_Ratio") ? row["Down/Up_Ratio"] : "-" },
-                            { "Label", row.ContainsKey("Label") ? row["Label"] : "-" }
-                        };
-
-                        var infoPanel = FindAnyObjectByType<ConnectionInfoPanel>();
-                        if (infoPanel != null)
-                        {
-                            infoPanel.ShowInfo(info);
-                        }
-                    });
 
                     activeLines.Add(new ActiveLine
                     {
@@ -343,5 +270,14 @@ public class VisualizeNetwork : MonoBehaviour
     private class AnimatedNodeFlag : MonoBehaviour
     {
         public bool hasAnimated = false;
+    }
+
+    void OnDrawGizmos()
+    {
+        if (networkWrapper != null)
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawSphere(networkWrapper.transform.position, 0.3f);
+        }
     }
 }

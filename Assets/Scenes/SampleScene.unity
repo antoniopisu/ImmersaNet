@@ -465,6 +465,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 10bbd5796b0a8cd4eacb77cfcaf09252, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  nomeFileCSV: nuevo
   isLoaded: 0
 --- !u!1 &310162551 stripped
 GameObject:
@@ -2232,9 +2233,12 @@ MonoBehaviour:
   nodesPerLevel: 7
   levelHeight: 1
   ringRadius: 3
+  playerCamera: {fileID: 0}
+  forwardOffset: 5
   minNodeScale: 0.2
   maxNodeScale: 0.8
   dosThreshold: 236084000
+  visualizationEnabled: 0
 --- !u!4 &1142003795
 Transform:
   m_ObjectHideFlags: 0
@@ -3429,6 +3433,7 @@ MonoBehaviour:
       m_SingletonActionBindings: []
       m_Flags: 0
     m_Reference: {fileID: -6131295136447488360, guid: c348712bda248c246b8c49b3db54643f, type: 3}
+  menuSpawner: {fileID: 0}
   axisFontSize: 1
   axisLabelOffset: 0.2
   sharedLabelQ2: {fileID: 0}
@@ -3747,7 +3752,7 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 8300000, guid: 24d7c19e7a7d06544bfa5525998ff61c, type: 3}
+  m_audioClip: {fileID: 0}
   m_Resource: {fileID: 8300000, guid: 24d7c19e7a7d06544bfa5525998ff61c, type: 3}
   m_PlayOnAwake: 0
   m_Volume: 1

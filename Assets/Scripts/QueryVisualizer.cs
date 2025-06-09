@@ -54,6 +54,14 @@ public class QueryVisualizer : MonoBehaviour
         { "58", "ICMPv6" }, { "89", "OSPF" }
     };
 
+    void Awake()
+    {
+        if (menuSpawner == null)
+        {
+            menuSpawner = FindAnyObjectByType<MenuSpawnerAndToggle>();
+        }
+    }
+
     void Update()
     {
         if (hideGraphAction.action != null && hideGraphAction.action.WasPressedThisFrame())
@@ -121,7 +129,7 @@ public class QueryVisualizer : MonoBehaviour
 
             Transform cam = Camera.main.transform;
             Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
-            histogramWrapper.position = cam.position + forward * 1.2f + Vector3.down * 0.3f + -cam.right * 0.3f;
+            histogramWrapper.position = cam.position + forward * 2f;
             histogramWrapper.rotation = Quaternion.LookRotation(forward);
 
             var rb = wrapperGO.AddComponent<Rigidbody>();
@@ -158,7 +166,7 @@ public class QueryVisualizer : MonoBehaviour
             sharedLabel = labelObj.AddComponent<TextMeshPro>();
             sharedLabel.fontSize = 1;
             sharedLabel.alignment = TextAlignmentOptions.Center;
-            sharedLabel.color = Color.white;
+            sharedLabel.color = Color.black;
             labelObj.transform.localRotation = Quaternion.Euler(0, 0, 0);
             sharedLabel.gameObject.SetActive(false);
         }
@@ -176,15 +184,14 @@ public class QueryVisualizer : MonoBehaviour
             }
         }
 
-        float maxValue = 0f;
-        foreach (var value in ipToByteSum.Values)
-            if (value > maxValue)
-                maxValue = value;
-
+        float maxValue = ipToByteSum.Values.Max();
         int index = 0;
+        float maxHeight = 0f;
+
         foreach (var entry in ipToByteSum)
         {
             float normalizedHeight = (entry.Value / maxValue) * 0.15f;
+            maxHeight = Mathf.Max(maxHeight, normalizedHeight);
 
             GameObject bar = Instantiate(barPrefab, anchor);
             bar.transform.localPosition = new Vector3(index * spacing, 0f, 0f);
@@ -205,13 +212,14 @@ public class QueryVisualizer : MonoBehaviour
             index++;
         }
 
-        CreateXAxisLabel();
-        CreateYAxisLabel();
+        CreateXAxisLabel(index, maxHeight);
+        CreateYAxisLabel(maxHeight);
 
         Debug.Log("Istogramma generato con " + index + " barre.");
         RegisterQuery(QueryType.Histogram);
-
     }
+
+
 
 
     public void GenerateProtocolBubbles()
@@ -386,6 +394,8 @@ public class QueryVisualizer : MonoBehaviour
 
         int numCols = srcIPs.Count;
         int numRows = dstIPs.Count;
+        float fontScale = Mathf.Clamp(spacing * Mathf.Min(numCols, numRows), 0.3f, 0.8f);
+
 
         Vector3 centerOffset = new Vector3(
             (numCols - 1) * spacing / 2f,
@@ -433,35 +443,36 @@ public class QueryVisualizer : MonoBehaviour
 
         var titleText = titleLabel.AddComponent<TextMeshPro>();
         titleText.text = "Heatmap del Traffico tra IP";
-        titleText.fontSize = 0.6f;
-        titleText.color = Color.white;
+        titleText.fontSize = fontScale * 1.2f;
+        titleText.color = Color.black;
         titleText.alignment = TextAlignmentOptions.Center;
         titleText.outlineWidth = 0.2f;
         titleText.outlineColor = Color.black;
 
         titleLabel.transform.localPosition = new Vector3(0f, (numRows * spacing / 2f) + 0.1f, 0f);
-        titleLabel.transform.localRotation = Quaternion.LookRotation(titleLabel.transform.position - cam.position);
+        titleLabel.transform.localRotation = Quaternion.identity;
 
         // Etichette assi
         GameObject xAxisLabel = new GameObject("X_Label_SrcIP");
         xAxisLabel.transform.SetParent(heatmapWrapper);
         var xText = xAxisLabel.AddComponent<TextMeshPro>();
         xText.text = "Indirizzi Sorgente (Src_IP)";
-        xText.fontSize = 0.5f;
-        xText.color = Color.white;
+        xText.fontSize = fontScale;
+        xText.color = Color.black;
         xText.alignment = TextAlignmentOptions.Center;
         xAxisLabel.transform.localPosition = new Vector3(0f, -(numRows * spacing / 2f) - 0.1f, 0f);
-        xAxisLabel.transform.localRotation = Quaternion.LookRotation(xAxisLabel.transform.position - cam.position);
+        xAxisLabel.transform.localRotation = Quaternion.identity;
 
         GameObject yAxisLabel = new GameObject("Y_Label_DstIP");
         yAxisLabel.transform.SetParent(heatmapWrapper);
         var yText = yAxisLabel.AddComponent<TextMeshPro>();
         yText.text = "Indirizzi Destinazione (Dst_IP)";
-        yText.fontSize = 0.5f;
-        yText.color = Color.white;
+        yText.fontSize = fontScale;
+        yText.color = Color.black;
         yText.alignment = TextAlignmentOptions.Center;
         yAxisLabel.transform.localPosition = new Vector3(-(numCols * spacing / 2f) - 0.1f, 0f, 0f);
-        yAxisLabel.transform.localRotation = Quaternion.LookRotation(yAxisLabel.transform.position - cam.position) * Quaternion.Euler(0, 0, 90);
+        yAxisLabel.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+
 
         // Label interattiva
         if (sharedLabelQ2 == null)
@@ -489,20 +500,36 @@ public class QueryVisualizer : MonoBehaviour
             bgRenderer.material = mat;
         }
 
-        // Legenda
-        GameObject legendWrapperGO = new GameObject("HeatmapLegendWrapper");
-        Transform legendWrapper = legendWrapperGO.transform;
-        legendWrapper.SetParent(heatmapWrapper);
-        legendWrapper.localPosition = new Vector3((numCols * spacing / 2f) + 0.2f, -0.2f, 0f);
-        legendWrapper.localRotation = Quaternion.identity;
-        legendWrapper.localScale = Vector3.one;
-
         string[] levels = new string[] {
         "Traffico nullo o molto basso", "Traffico basso", "Traffico medio", "Traffico alto", "Traffico molto alto"
     };
         Color[] colors = new Color[] {
         Color.blue, Color.cyan, Color.green, Color.yellow, Color.red
     };
+        // Legenda
+        GameObject legendWrapperGO = new GameObject("HeatmapLegendWrapper");
+        Transform legendWrapper = legendWrapperGO.transform;
+        legendWrapper.SetParent(heatmapWrapper);
+
+        float heatmapWidth = (numCols - 1) * spacing;
+        float heatmapHeight = (numRows - 1) * spacing;
+
+        // Altezza della legenda in base al numero di livelli
+        float legendTotalHeight = levels.Length * 0.15f;
+
+        // Posizione finale: a destra della heatmap, centrata verticalmente su di essa
+        float offsetX = heatmapWidth / 2f + 0.4f;
+        float offsetY = heatmapHeight / 2f - legendTotalHeight / 5f;
+
+        Vector3 legendOffset = new Vector3(offsetX, offsetY, 0f);
+        legendWrapper.localPosition = legendOffset;
+
+
+
+        legendWrapper.localRotation = Quaternion.identity;
+        legendWrapper.localScale = Vector3.one;
+
+        
 
         Vector3 legendStartLocal = new Vector3(0f, (numRows * spacing / 2f), 0f);
 
@@ -512,7 +539,7 @@ public class QueryVisualizer : MonoBehaviour
             legendCell.name = $"LegendCell_{i}";
             legendCell.transform.SetParent(legendWrapper);
             legendCell.transform.localScale = Vector3.one * spacing * 2f;
-            legendCell.transform.localPosition = legendStartLocal + new Vector3(0f, -i * 0.15f, 0f);
+            legendCell.transform.localPosition = new Vector3(0f, -i * 0.15f, 0f);
             legendCell.transform.localRotation = Quaternion.identity;
 
             var mat = new Material(Shader.Find("Unlit/Color"));
@@ -526,7 +553,7 @@ public class QueryVisualizer : MonoBehaviour
             var textMesh = legendLabel.AddComponent<TextMeshPro>();
             textMesh.text = levels[i];
             textMesh.fontSize = 20f;
-            textMesh.color = Color.white;
+            textMesh.color = Color.black;
             textMesh.outlineWidth = 0.2f;
             textMesh.outlineColor = Color.black;
             textMesh.alignment = TextAlignmentOptions.Left;
@@ -541,31 +568,57 @@ public class QueryVisualizer : MonoBehaviour
     }
 
 
-    private void CreateXAxisLabel()
+    private void CreateXAxisLabel(int numBars, float maxBarHeight)
     {
         GameObject xAxisLabel = new GameObject("XAxisLabel");
         xAxisLabel.transform.SetParent(anchor);
+
         TextMeshPro tmp = xAxisLabel.AddComponent<TextMeshPro>();
         tmp.text = "IP nel Tempo";
-        tmp.fontSize = axisFontSize;
+
+        float totalWidth = numBars * spacing;
+        float baseFontSize = Mathf.Clamp(maxBarHeight * 0.2f, 0.5f, 3f);
+
+        float fontSize;
+        if (numBars <= 10)
+        {
+            fontSize = baseFontSize;
+        }
+        else
+        {
+            // Crescita graduale rispetto alla base
+            fontSize = Mathf.Clamp(baseFontSize + (numBars - 10) * 0.05f, baseFontSize, baseFontSize + 1.0f);
+        }
+
+        tmp.fontSize = fontSize;
         tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color = Color.white;
-        xAxisLabel.transform.localPosition = new Vector3(0.25f, -axisLabelOffset + 0.15f, 0f);
+        tmp.color = Color.black;
+
+        xAxisLabel.transform.localPosition = new Vector3(totalWidth / 2f - spacing / 2f, -axisLabelOffset + 0.15f, 0f);
         xAxisLabel.transform.localRotation = Quaternion.Euler(0, 0, 0);
     }
 
-    private void CreateYAxisLabel()
+    private void CreateYAxisLabel(float maxBarHeight)
     {
         GameObject yAxisLabel = new GameObject("YAxisLabel");
         yAxisLabel.transform.SetParent(anchor);
+
         TextMeshPro tmp = yAxisLabel.AddComponent<TextMeshPro>();
         tmp.text = "Terabyte per IP";
-        tmp.fontSize = axisFontSize;
+
+        float fontSize = Mathf.Clamp(maxBarHeight * 0.2f, 0.5f, 3f);
+
+        tmp.fontSize = fontSize;
         tmp.alignment = TextAlignmentOptions.Center;
-        tmp.color = Color.white;
-        yAxisLabel.transform.localPosition = new Vector3(-axisLabelOffset + 0.1f, 0.15f, 0f);
+        tmp.color = Color.black;
+
+        float verticalMidpoint = maxBarHeight / 2f;
+        yAxisLabel.transform.localPosition = new Vector3(-axisLabelOffset + 0.15f, verticalMidpoint, 0f);
         yAxisLabel.transform.localRotation = Quaternion.Euler(0, 0, 90);
     }
+
+
+
 
     private IEnumerator AnimateBarGrowth(GameObject bar, float targetHeight, float duration = 0.5f)
     {

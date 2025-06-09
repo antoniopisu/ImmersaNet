@@ -5,7 +5,7 @@ using TMPro;
 
 public class LoadData : MonoBehaviour
 {
-    public string nomeFileCSV = "nuevo";  
+    public string nomeFileCSV; 
     public List<Dictionary<string, string>> data = new List<Dictionary<string, string>>();
     public bool isLoaded = false;
 

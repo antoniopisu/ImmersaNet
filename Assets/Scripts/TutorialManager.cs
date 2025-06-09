@@ -187,10 +187,19 @@ public class TutorialManager : MonoBehaviour
     {
         if (wrapperPanel != null && playerCamera != null)
         {
+            // Mantieni la posizione Y centrata sull'utente
             Vector3 currentPos = wrapperPanel.position;
             float newY = playerCamera.position.y + verticalOffset;
-
             wrapperPanel.position = new Vector3(currentPos.x, newY, currentPos.z);
+
+            // Raddrizza il pannello
+            Vector3 lookDir = wrapperPanel.position - playerCamera.position;
+            lookDir.y = 0f;
+            if (lookDir != Vector3.zero)
+            {
+                wrapperPanel.rotation = Quaternion.LookRotation(lookDir.normalized, Vector3.up);
+            }
         }
     }
+
 }
