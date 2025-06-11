@@ -34,7 +34,10 @@ public class QueryVisualizer : MonoBehaviour
     private Transform anchor;
     private TextMeshPro sharedLabel;
     private GameObject sharedLabelQ2Background;
+#pragma warning disable 0414
     private bool protocolBubblesGenerated = false;
+#pragma warning restore 0414
+
 
     public int axisFontSize = 1;
     public float axisLabelOffset = 0f;

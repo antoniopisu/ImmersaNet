@@ -81,27 +81,44 @@ public class TutorialManager : MonoBehaviour
             wrapperPanel.gameObject.SetActive(false);
         }
 
-        StartCoroutine(MostraDopoUnSecondo());
+        StartCoroutine(ComparsaPanel());
+
     }
 
-    IEnumerator MostraDopoUnSecondo()
+    IEnumerator ComparsaPanel()
     {
-        yield return new WaitForSeconds(1f);
+        // Attesa prima che compaia il panel
+        yield return new WaitForSeconds(2f); 
 
         wrapperPanel.gameObject.SetActive(true);
+        wrapperPanel.localScale = Vector3.zero;
 
         if (wrapperCanvas != null)
+            wrapperCanvas.alpha = 0f;
+
+        float elapsed = 0f;
+        float duration = fadeDuration;
+
+        while (elapsed < duration)
         {
-            float t = 0f;
-            while (t < fadeDuration)
-            {
-                t += Time.deltaTime;
-                wrapperCanvas.alpha = Mathf.Lerp(0f, 1f, t / fadeDuration);
-                yield return null;
-            }
-            wrapperCanvas.alpha = 1f;
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+
+            // Scala da 0 a 1
+            wrapperPanel.localScale = Vector3.Lerp(Vector3.zero, Vector3.one, t);
+
+            // Alpha da 0 a 1
+            if (wrapperCanvas != null)
+                wrapperCanvas.alpha = t;
+
+            yield return null;
         }
+
+        wrapperPanel.localScale = Vector3.one;
+        if (wrapperCanvas != null)
+            wrapperCanvas.alpha = 1f;
     }
+
 
     void AggiornaLayoutTesti()
     {
@@ -187,12 +204,10 @@ public class TutorialManager : MonoBehaviour
     {
         if (wrapperPanel != null && playerCamera != null)
         {
-            // Mantieni la posizione Y centrata sull'utente
             Vector3 currentPos = wrapperPanel.position;
             float newY = playerCamera.position.y + verticalOffset;
             wrapperPanel.position = new Vector3(currentPos.x, newY, currentPos.z);
 
-            // Raddrizza il pannello
             Vector3 lookDir = wrapperPanel.position - playerCamera.position;
             lookDir.y = 0f;
             if (lookDir != Vector3.zero)

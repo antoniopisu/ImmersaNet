@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
-using UnityEngine.XR.Interaction.Toolkit;
 using System.Globalization;
 
 public class VisualizeNetwork : MonoBehaviour
@@ -41,7 +40,6 @@ public class VisualizeNetwork : MonoBehaviour
         public DateTime endTime;
     }
 
-
     private List<ActiveLine> activeLines = new List<ActiveLine>();
 
     void Start()
@@ -62,8 +60,15 @@ public class VisualizeNetwork : MonoBehaviour
         if (playerCamera != null)
         {
             Vector3 forwardXZ = new Vector3(playerCamera.forward.x, 0f, playerCamera.forward.z).normalized;
-            treeCenter = playerCamera.position + forwardXZ * forwardOffset;
+
+            Vector3 flatCameraPos = new Vector3(playerCamera.position.x, 0f, playerCamera.position.z);
+
+            // Posizione della rete più avanti rispetto all’utente (livello terreno)
+            float extraOffset = 2f;
+            treeCenter = flatCameraPos + forwardXZ * (forwardOffset + extraOffset);
         }
+
+
         wrapperTransform.position = new Vector3(treeCenter.x, treeCenter.y, treeCenter.z);
 
         Debug.Log("[NetworkInit] Wrapper created and placed at: " + wrapperTransform.position);
@@ -192,6 +197,37 @@ public class VisualizeNetwork : MonoBehaviour
                     lr.SetPosition(0, start);
                     lr.SetPosition(1, start);
 
+                    BoxCollider collider = lineObj.AddComponent<BoxCollider>();
+                    Vector3 midPoint = (start + end) / 2;
+                    lineObj.transform.position = midPoint;
+                    Vector3 direction = end - start;
+                    lineObj.transform.rotation = Quaternion.LookRotation(direction);
+                    collider.size = new Vector3(0.01f, 0.01f, direction.magnitude);
+
+                    var interactable = lineObj.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRSimpleInteractable>();
+                    interactable.selectEntered.AddListener((args) =>
+                    {
+                        var panel = FindAnyObjectByType<ConnectionInfoPanel>();
+                        if (panel != null)
+                        {
+                            Dictionary<string, string> info = new Dictionary<string, string>
+                            {
+                                { "Src_IP", src },
+                                { "Dst_IP", dst },
+                                { "Flow_Bytes_s", byteStr },
+                                { "Flow_Duration", durationStr },
+                                { "Timestamp", rawTime },
+                            };
+
+                            if (row.TryGetValue("Protocol", out string proto))
+                                info.Add("Protocol", proto);
+                            if (row.TryGetValue("Label", out string label))
+                                info.Add("Label", label);
+
+                            panel.ShowInfo(info);
+                        }
+                    });
+
                     StartCoroutine(AnimateLineDraw(lr, start, end));
 
                     activeLines.Add(new ActiveLine
@@ -216,7 +252,6 @@ public class VisualizeNetwork : MonoBehaviour
             }
         }
     }
-
 
     private void AddAudioAndPlay(GameObject node)
     {
@@ -294,10 +329,32 @@ public class VisualizeNetwork : MonoBehaviour
             if (line.lineObj != null && line.srcNode != null && line.dstNode != null)
             {
                 LineRenderer lr = line.lineObj.GetComponent<LineRenderer>();
-                lr.SetPosition(0, line.srcNode.transform.position);
-                lr.SetPosition(1, line.dstNode.transform.position);
+                Vector3 start = line.srcNode.transform.position;
+                Vector3 end = line.dstNode.transform.position;
+                lr.SetPosition(0, start);
+                lr.SetPosition(1, end);
+
+                UpdateColliderBetweenPoints(line.lineObj, start, end);
             }
         }
+    }
+
+    private void UpdateColliderBetweenPoints(GameObject lineObj, Vector3 start, Vector3 end)
+    {
+        var collider = lineObj.GetComponent<BoxCollider>();
+        if (collider == null)
+        {
+            collider = lineObj.AddComponent<BoxCollider>();
+        }
+
+        Vector3 direction = end - start;
+        float length = direction.magnitude;
+        Vector3 midPoint = (start + end) / 2f;
+
+        collider.size = new Vector3(0.05f, 0.05f, length);
+        collider.center = Vector3.zero;
+        lineObj.transform.position = midPoint;
+        lineObj.transform.rotation = Quaternion.LookRotation(direction);
     }
 
 }

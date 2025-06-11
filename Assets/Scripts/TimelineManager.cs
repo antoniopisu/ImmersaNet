@@ -21,7 +21,7 @@ public class TimelineManager : MonoBehaviour
     private Coroutine timelineRoutine;
     private bool isRunning = false;
     private bool isDragging = false;
-    private bool timelineInitialized = false;
+    //private bool timelineInitialized = false;
 
     void Start()
     {
@@ -67,7 +67,7 @@ public class TimelineManager : MonoBehaviour
         currentTime = minTime;
         UpdateSlider();
         UpdateButtonStates();
-        timelineInitialized = true;
+        //timelineInitialized = true;
     }
 
     void UpdateTimeUI()

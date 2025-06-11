@@ -25,6 +25,7 @@ public class ConnectionInfoPanel : MonoBehaviour
 
         GameObject panelInstance = Instantiate(panelPrefab, position, Quaternion.LookRotation(forward));
         panelInstance.transform.localScale = Vector3.one * 0.002f;
+        Debug.Log("[ShowInfo] Called with keys: " + string.Join(", ", info.Keys));
 
         TextMeshProUGUI textField = panelInstance.GetComponentInChildren<TextMeshProUGUI>();
         if (textField != null)
