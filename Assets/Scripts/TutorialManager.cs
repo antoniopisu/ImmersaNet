@@ -8,6 +8,7 @@ public class TutorialManager : MonoBehaviour
 {
     [Header("Riferimenti UI automatici")]
     public GameObject panelTutorial;
+    public GameObject panelControllerImage;
     public TextMeshProUGUI titoloText;
     public TextMeshProUGUI paragrafoText;
     public Button nextButton;
@@ -49,12 +50,23 @@ public class TutorialManager : MonoBehaviour
     private string[] paragrafi =
     {
         "In this tutorial, you'll learn how to visually explore network traffic in virtual reality.",
-        "Use the left controller joystick to move around the environment. Use the right joystick to look around.",
-        "Press the Y button on the left controller to show or hide the network timeline. Start the timeline to view the network over time. " +
+        "Use the left controller joystick (3) to move around the environment. Use the right joystick (3) to look around.",
+        "Press the Y button (2) on the left controller to show or hide the network timeline. Start the timeline to view the network over time. " +
         "Each sphere represents a network device with its IP address. Connections between nodes indicate network traffic.",
-        "Point at the connection between two nodes and press the select button on the back of the controller to view the connection details.",
-        "Press the A button on the right controller to show or hide the menu. You can launch any query by pressing its button with the select button on the left controller.",
+        "Point at the connection between two nodes and press the select button (1) on the back of the controller to view the connection details.",
+        "Press the A (2) button on the right controller to show or hide the menu. You can launch any query by pressing its button with the select button on the left controller.",
         "You're ready to begin. Use the tutorial to learn how the system works, and when you're ready, press the button to use the full system."
+    };
+
+    // per ogni step se va mostrata l’immagine del controller
+    private bool[] mostraController =
+    {
+        false, // Welcome
+        true,  // Movement
+        true,  // Nodes
+        true,  // Explore
+        true,  // Visualizations
+        false  // Let’s Begin
     };
 
     void Start()
@@ -82,13 +94,11 @@ public class TutorialManager : MonoBehaviour
         }
 
         StartCoroutine(ComparsaPanel());
-
     }
 
     IEnumerator ComparsaPanel()
     {
-        // Attesa prima che compaia il panel
-        yield return new WaitForSeconds(2f); 
+        yield return new WaitForSeconds(1.3f);
 
         wrapperPanel.gameObject.SetActive(true);
         wrapperPanel.localScale = Vector3.zero;
@@ -104,10 +114,7 @@ public class TutorialManager : MonoBehaviour
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / duration);
 
-            // Scala da 0 a 1
             wrapperPanel.localScale = Vector3.Lerp(Vector3.zero, Vector3.one, t);
-
-            // Alpha da 0 a 1
             if (wrapperCanvas != null)
                 wrapperCanvas.alpha = t;
 
@@ -118,7 +125,6 @@ public class TutorialManager : MonoBehaviour
         if (wrapperCanvas != null)
             wrapperCanvas.alpha = 1f;
     }
-
 
     void AggiornaLayoutTesti()
     {
@@ -152,7 +158,8 @@ public class TutorialManager : MonoBehaviour
         titoloText.text = titoli[currentIndex];
         paragrafoText.text = paragrafi[currentIndex];
 
-        Debug.Log($"[Tutorial] UpdatePanel - Index: {currentIndex}, Titolo: {titoli[currentIndex]}");
+        if (panelControllerImage != null)
+            panelControllerImage.SetActive(mostraController[currentIndex]);
 
         prevButton.gameObject.SetActive(currentIndex > 0);
 
@@ -168,6 +175,8 @@ public class TutorialManager : MonoBehaviour
             if (nextButtonBackground != null)
                 nextButtonBackground.color = coloreOriginale;
         }
+
+        Debug.Log($"[Tutorial] UpdatePanel - Index: {currentIndex}, Titolo: {titoli[currentIndex]}");
     }
 
     public void HandleNextClick()
@@ -216,5 +225,4 @@ public class TutorialManager : MonoBehaviour
             }
         }
     }
-
 }

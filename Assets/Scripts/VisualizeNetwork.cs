@@ -60,18 +60,12 @@ public class VisualizeNetwork : MonoBehaviour
         if (playerCamera != null)
         {
             Vector3 forwardXZ = new Vector3(playerCamera.forward.x, 0f, playerCamera.forward.z).normalized;
-
             Vector3 flatCameraPos = new Vector3(playerCamera.position.x, 0f, playerCamera.position.z);
-
-            // Posizione della rete più avanti rispetto all’utente (livello terreno)
             float extraOffset = 2f;
             treeCenter = flatCameraPos + forwardXZ * (forwardOffset + extraOffset);
         }
 
-
         wrapperTransform.position = new Vector3(treeCenter.x, treeCenter.y, treeCenter.z);
-
-        Debug.Log("[NetworkInit] Wrapper created and placed at: " + wrapperTransform.position);
 
         HashSet<string> ipSet = new HashSet<string>();
         foreach (var row in loadData.data)
@@ -101,6 +95,11 @@ public class VisualizeNetwork : MonoBehaviour
 
             GameObject node = Instantiate(nodePrefab, wrapperTransform);
             node.transform.localPosition = localPos;
+            var rend = node.GetComponent<Renderer>();
+            if (rend != null)
+            {
+                node.AddComponent<OriginalColorHolder>().originalColor = rend.material.color;
+            }
 
             node.name = ip;
             ipToNode[ip] = node;
@@ -113,9 +112,6 @@ public class VisualizeNetwork : MonoBehaviour
             node.AddComponent<AnimatedNodeFlag>();
             index++;
         }
-
-        Debug.Log("Rete inizializzata con " + uniqueIPs.Count + " nodi su livelli verticali.");
-        Debug.Log($"[NetworkInit] Wrapper placed at {wrapperTransform.position} relative to player at {playerCamera.position}");
     }
 
     public void VisualizzaReteInTempo(DateTime tempo)
@@ -164,7 +160,22 @@ public class VisualizeNetwork : MonoBehaviour
 
                 maxBytesObserved = Math.Max(maxBytesObserved, Math.Max(ipToCumulativeBytes[src], ipToCumulativeBytes[dst]));
 
-                if (ipToNode.TryGetValue(src, out GameObject srcNode) && !srcNode.activeSelf)
+                Color srcColor = ipToNode[src].GetComponent<OriginalColorHolder>().originalColor;
+                Color dstColor = ipToNode[dst].GetComponent<OriginalColorHolder>().originalColor;
+
+                if (bytes > dosThreshold)
+                {
+                    srcColor = new Color(1f, 0.5f, 0f);  // arancione
+                    dstColor = new Color(1f, 0.5f, 0f);
+                }
+
+                if (row.TryGetValue("Label", out string label) && label != "Benign")
+                {
+                    srcColor = Color.red;
+                    dstColor = Color.red;
+                }
+
+                if (ipToNode.TryGetValue(src, out GameObject srcNode))
                 {
                     srcNode.SetActive(true);
                     if (!srcNode.GetComponent<AnimatedNodeFlag>().hasAnimated)
@@ -172,9 +183,11 @@ public class VisualizeNetwork : MonoBehaviour
                         StartCoroutine(AnimateNodeAppearance(srcNode));
                         srcNode.GetComponent<AnimatedNodeFlag>().hasAnimated = true;
                     }
+                    var renderer = srcNode.GetComponentInChildren<Renderer>();
+                    if (renderer != null) renderer.material.color = srcColor;
                 }
 
-                if (ipToNode.TryGetValue(dst, out GameObject dstNode) && !dstNode.activeSelf)
+                if (ipToNode.TryGetValue(dst, out GameObject dstNode))
                 {
                     dstNode.SetActive(true);
                     if (!dstNode.GetComponent<AnimatedNodeFlag>().hasAnimated)
@@ -182,6 +195,8 @@ public class VisualizeNetwork : MonoBehaviour
                         StartCoroutine(AnimateNodeAppearance(dstNode));
                         dstNode.GetComponent<AnimatedNodeFlag>().hasAnimated = true;
                     }
+                    var renderer = dstNode.GetComponentInChildren<Renderer>();
+                    if (renderer != null) renderer.material.color = dstColor;
                 }
 
                 if (!activeLines.Exists(l => l.lineObj != null && l.lineObj.name == $"{src}->{dst}"))
@@ -221,8 +236,8 @@ public class VisualizeNetwork : MonoBehaviour
 
                             if (row.TryGetValue("Protocol", out string proto))
                                 info.Add("Protocol", proto);
-                            if (row.TryGetValue("Label", out string label))
-                                info.Add("Label", label);
+                            if (row.TryGetValue("Label", out string lbl))
+                                info.Add("Label", lbl);
 
                             panel.ShowInfo(info);
                         }
@@ -272,7 +287,6 @@ public class VisualizeNetwork : MonoBehaviour
             source.maxDistance = 15f;
         }
 
-        Debug.Log($"Playing sound from node {node.name}");
         source.PlayOneShot(alarmClip);
     }
 
@@ -356,5 +370,10 @@ public class VisualizeNetwork : MonoBehaviour
         lineObj.transform.position = midPoint;
         lineObj.transform.rotation = Quaternion.LookRotation(direction);
     }
+
+    private class OriginalColorHolder : MonoBehaviour
+{
+    public Color originalColor;
+}
 
 }
