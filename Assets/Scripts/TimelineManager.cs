@@ -21,11 +21,15 @@ public class TimelineManager : MonoBehaviour
     private Coroutine timelineRoutine;
     private bool isRunning = false;
     private bool isDragging = false;
-    //private bool timelineInitialized = false;
 
     void Start()
     {
         if (!gameObject.activeInHierarchy || !enabled) return;
+
+        // Disattiva pulsanti finché non è pronto
+        playButton.interactable = false;
+        pauseButton.interactable = false;
+        timelineSlider.interactable = false;
 
         StartCoroutine(InitializeTimeline());
 
@@ -67,7 +71,11 @@ public class TimelineManager : MonoBehaviour
         currentTime = minTime;
         UpdateSlider();
         UpdateButtonStates();
-        //timelineInitialized = true;
+
+        // Attiva pulsanti dopo caricamento
+        playButton.interactable = true;
+        pauseButton.interactable = true;
+        timelineSlider.interactable = true;
     }
 
     void UpdateTimeUI()
@@ -140,12 +148,10 @@ public class TimelineManager : MonoBehaviour
         timelineRoutine = StartCoroutine(RunTimeline());
         isRunning = true;
 
-        
         visualizeNetwork.visualizationEnabled = true;
 
         UpdateButtonStates();
     }
-
 
     public void StopTimeline()
     {

@@ -79,7 +79,7 @@ public class MenuSpawnerAndToggle : MonoBehaviour
         descriptionText.fontSize = 18;
         descriptionText.color = Color.white;
         descriptionText.alignment = TextAlignmentOptions.TopLeft;  // più leggibile
-        descriptionText.enableWordWrapping = true;
+        descriptionText.textWrappingMode = TextWrappingModes.Normal;
         descriptionText.overflowMode = TextOverflowModes.Masking;  // oppure Ellipsis o Truncate
         descriptionText.text = "";
 

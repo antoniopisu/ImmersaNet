@@ -235,7 +235,7 @@ public class QueryVisualizer : MonoBehaviour
 
         if (protocolBubbleWrapper != null)
         {
-            Debug.Log("Le bolle sono gia presenti, non vengono rigenerate.");
+            Debug.Log("Le bolle sono già presenti, non vengono rigenerate.");
             return;
         }
 
@@ -270,21 +270,32 @@ public class QueryVisualizer : MonoBehaviour
         protocolBubbleWrapper.position = basePos;
         protocolBubbleWrapper.rotation = Quaternion.identity;
 
+        Dictionary<string, Color> protocolColors = new Dictionary<string, Color>();
+        System.Random rnd = new System.Random();
+
         int i = 0;
+        int bubblesPerLayer = 4;
+        float verticalSpacing = 0.5f;
+
         foreach (var entry in protocolCount)
         {
             float percentage = (float)entry.Value / totalFlows;
             float normalized = (float)entry.Value / maxCount;
             float scaledSize = Mathf.Lerp(minScale, maxScale, normalized);
 
-            float angle = i * Mathf.PI * 2f / protocolCount.Count;
-            float distance = 0.1f + scaledSize * 0.2f;
-            Vector3 offset = new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * distance + Vector3.up * UnityEngine.Random.Range(-0.1f, 0.1f);
-            Vector3 worldPos = offset;
+            int layer = i / bubblesPerLayer;
+            int indexInLayer = i % bubblesPerLayer;
+
+            float angle = indexInLayer * Mathf.PI * 2f / Mathf.Min(bubblesPerLayer, protocolCount.Count);
+            float baseDistance = 0.5f;
+            float distance = baseDistance + scaledSize * 0.5f;
+
+            Vector3 offset = new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * distance;
+            offset += Vector3.up * (layer * verticalSpacing + UnityEngine.Random.Range(-0.05f, 0.05f));
 
             GameObject bubbleWrapper = new GameObject($"ProtocolBubbleWrapper_{entry.Key}");
             bubbleWrapper.transform.SetParent(protocolBubbleWrapper, false);
-            bubbleWrapper.transform.localPosition = worldPos;
+            bubbleWrapper.transform.localPosition = offset;
             bubbleWrapper.transform.localRotation = Quaternion.identity;
             bubbleWrapper.transform.localScale = Vector3.one;
 
@@ -319,10 +330,36 @@ public class QueryVisualizer : MonoBehaviour
             if (bubble.TryGetComponent<Collider>(out var colChild)) Destroy(colChild);
             if (bubble.TryGetComponent<XRGrabInteractable>(out var grabChild)) Destroy(grabChild);
 
+            // Colore trasparente unico
+            if (!protocolColors.ContainsKey(entry.Key))
+            {
+                Color newColor = new Color(
+                    (float)rnd.NextDouble(),
+                    (float)rnd.NextDouble(),
+                    (float)rnd.NextDouble(),
+                    0.6f
+                );
+                protocolColors[entry.Key] = newColor;
+            }
+
+            Transform meshChild = bubble.transform.Find("BubbleMesh");
+            if (meshChild != null && meshChild.TryGetComponent<Renderer>(out var meshRenderer))
+            {
+                Material mat = new Material(meshRenderer.material);
+                mat.color = protocolColors[entry.Key];
+                meshRenderer.material = mat;
+            }
+
+            var text = bubble.GetComponentInChildren<TextMeshPro>();
+            if (text != null)
+            {
+                text.color = new Color(0f, 0f, 0f, 0.9f);
+            }
+
             i++;
         }
 
-        Debug.Log("Bolle dei protocolli generate con contenitore individuale.");
+        Debug.Log("Bolle dei protocolli generate su più livelli.");
         RegisterQuery(QueryType.ProtocolBubbles);
     }
 
@@ -499,8 +536,17 @@ public class QueryVisualizer : MonoBehaviour
             sharedLabelQ2Background.transform.localScale = new Vector3(0.25f, 0.1f, 1f);
 
             var bgRenderer = sharedLabelQ2Background.GetComponent<Renderer>();
-            Material mat = Resources.Load<Material>("Materials/BiancoPanelHeat");
+            Material mat = new Material(Shader.Find("Unlit/Color"));
+            mat.color = new Color(1f, 1f, 1f, 0.8f);
+            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            mat.SetInt("_ZWrite", 0);
+            mat.DisableKeyword("_ALPHATEST_ON");
+            mat.EnableKeyword("_ALPHABLEND_ON");
+            mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            mat.renderQueue = 3000;
             bgRenderer.material = mat;
+
         }
 
         string[] levels = new string[] {
@@ -532,7 +578,7 @@ public class QueryVisualizer : MonoBehaviour
         legendWrapper.localRotation = Quaternion.identity;
         legendWrapper.localScale = Vector3.one;
 
-        
+
 
         Vector3 legendStartLocal = new Vector3(0f, (numRows * spacing / 2f), 0f);
 
@@ -577,7 +623,7 @@ public class QueryVisualizer : MonoBehaviour
         xAxisLabel.transform.SetParent(anchor);
 
         TextMeshPro tmp = xAxisLabel.AddComponent<TextMeshPro>();
-        tmp.text = "IP nel Tempo";
+        tmp.text = "Indirizzi IP univoci (Sorgente)";
 
         float totalWidth = numBars * spacing;
         float baseFontSize = Mathf.Clamp(maxBarHeight * 0.2f, 0.5f, 3f);

@@ -8,6 +8,7 @@ public class LoadData : MonoBehaviour
     public string nomeFileCSV; 
     public List<Dictionary<string, string>> data = new List<Dictionary<string, string>>();
     public bool isLoaded = false;
+    public float progress = 0f;
 
     public IEnumerator LoadFile()
     {
@@ -52,11 +53,18 @@ public class LoadData : MonoBehaviour
 
             data.Add(rowDict);
 
-            if (i % 10 == 0) yield return null;
+            if (i % 10 == 0)
+            {
+                progress = (float)i / (lines.Length - 1);
+                yield return null;
+            }
+
         }
 
         Debug.Log("Dati caricati: " + data.Count);
+        progress = 1f;
         isLoaded = true;
+
     }
 
     void Start()
