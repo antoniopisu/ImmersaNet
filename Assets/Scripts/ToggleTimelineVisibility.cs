@@ -13,7 +13,7 @@ public class ToggleTimelineVisibility : MonoBehaviour
         // Nasconde il canvas appena viene caricato, prima ancora che Start venga eseguito
         if (timelineCanvas != null)
         {
-            timelineCanvas.SetActive(true);
+            timelineCanvas.SetActive(false);
         }
     }
 
@@ -23,8 +23,8 @@ public class ToggleTimelineVisibility : MonoBehaviour
         {
             if (device is InputDevice && device.name.ToLower().Contains("left"))
             {
-                if (device.TryGetChildControl<ButtonControl>("secondaryButton") is ButtonControl yButton &&
-                    yButton.wasPressedThisFrame)
+                if (device.TryGetChildControl<ButtonControl>("secondaryButton") is ButtonControl xButton &&
+                    xButton.wasPressedThisFrame)
                 {
                     ToggleTimeline();
                     break;

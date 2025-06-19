@@ -41,7 +41,7 @@ public class ConnectionInfoPanel : MonoBehaviour
             Debug.LogWarning("CloseButton non trovato nel prefab.");
         }
 
-        StartCoroutine(AutoHidePanel(panelInstance, 60f));
+        StartCoroutine(AutoHidePanel(panelInstance, 20f));
     }
 
     private string FormatInfo(Dictionary<string, string> data)

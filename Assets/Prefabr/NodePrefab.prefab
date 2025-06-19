@@ -129,10 +129,10 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 64.4
-  m_fontSizeBase: 30
+  m_fontSize: 50
+  m_fontSizeBase: 50
   m_fontWeight: 400
-  m_enableAutoSizing: 1
+  m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 1
@@ -453,6 +453,10 @@ PrefabInstance:
       value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 324645475757320473, guid: bcb4968334940164ab9ef8a3dca340fc, type: 3}
+      propertyPath: m_ChildAlignment
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 324645475757320473, guid: bcb4968334940164ab9ef8a3dca340fc, type: 3}
       propertyPath: m_Padding.m_Left
       value: 10
       objectReference: {fileID: 0}
@@ -499,6 +503,10 @@ PrefabInstance:
     - target: {fileID: 1172876483993519827, guid: bcb4968334940164ab9ef8a3dca340fc, type: 3}
       propertyPath: m_AnchoredPosition.x
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4358845570287036376, guid: bcb4968334940164ab9ef8a3dca340fc, type: 3}
+      propertyPath: m_PresetInfoIsWorld
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4550805044361574168, guid: bcb4968334940164ab9ef8a3dca340fc, type: 3}
       propertyPath: m_AnchorMax.y

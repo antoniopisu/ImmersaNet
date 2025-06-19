@@ -6,9 +6,9 @@ public class LoadingUIManager : MonoBehaviour
 {
     public LoadData loadData;
 
-    public GameObject textWait;         // GameObject che contiene il testo (TextWait)
-    public GameObject loadBars;         // GameObject che contiene i quad (LoadBars)
-    public Transform progressBarFill;   // Il quad verde che cresce
+    public GameObject textWait;
+    public GameObject loadBars;
+    public Transform progressBarFill;
 
     private float fullWidth = 1f;
 
@@ -25,7 +25,7 @@ public class LoadingUIManager : MonoBehaviour
 
         while (!loadData.isLoaded)
         {
-            loadingText.text = "Loading dataset... Please wait.";
+            loadingText.text = "Stirring the data soup... Almost tasty.";
 
             float progress = Mathf.Clamp01(loadData.progress);
 
@@ -40,7 +40,7 @@ public class LoadingUIManager : MonoBehaviour
             yield return null;
         }
 
-        loadingText.text = "Dataset loaded! You can now press Play.";
+        loadingText.text = "Data cooked to perfection. Bon appétit!";
 
         Vector3 finalScale = progressBarFill.localScale;
         finalScale.x = fullWidth;

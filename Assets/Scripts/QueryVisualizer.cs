@@ -25,6 +25,7 @@ public class QueryVisualizer : MonoBehaviour
     public float spacing = 0.03f;
     public Transform fixedPosition;
     public Material barMaterial;
+    public Material hoverBarMaterial;
     public InputActionProperty hideGraphAction;
     public MenuSpawnerAndToggle menuSpawner;
 
@@ -200,8 +201,9 @@ public class QueryVisualizer : MonoBehaviour
             bar.transform.localPosition = new Vector3(index * spacing, 0f, 0f);
             bar.transform.localScale = new Vector3(barWidth, 0f, barWidth);
 
-            if (barMaterial != null)
-                bar.GetComponent<Renderer>().material = barMaterial;
+            var renderer = bar.GetComponent<Renderer>();
+            if (renderer != null && barMaterial != null)
+                renderer.material = barMaterial;
 
             StartCoroutine(AnimateBarGrowth(bar, normalizedHeight));
 
@@ -209,6 +211,9 @@ public class QueryVisualizer : MonoBehaviour
             hover.ipText = entry.Key;
             hover.byteValue = entry.Value;
             hover.visualizer = this;
+
+            hover.defaultMaterial = barMaterial;
+            hover.hoverMaterial = hoverBarMaterial;
 
             bar.AddComponent<BoxCollider>();
 
@@ -221,6 +226,7 @@ public class QueryVisualizer : MonoBehaviour
         Debug.Log("Istogramma generato con " + index + " barre.");
         RegisterQuery(QueryType.Histogram);
     }
+
 
 
 
@@ -482,7 +488,7 @@ public class QueryVisualizer : MonoBehaviour
         titleLabel.transform.SetParent(heatmapWrapper);
 
         var titleText = titleLabel.AddComponent<TextMeshPro>();
-        titleText.text = "Heatmap del Traffico tra IP";
+        titleText.text = "IP Traffic Heatmap";
         titleText.fontSize = fontScale * 1.2f;
         titleText.color = Color.black;
         titleText.alignment = TextAlignmentOptions.Center;
@@ -496,7 +502,7 @@ public class QueryVisualizer : MonoBehaviour
         GameObject xAxisLabel = new GameObject("X_Label_SrcIP");
         xAxisLabel.transform.SetParent(heatmapWrapper);
         var xText = xAxisLabel.AddComponent<TextMeshPro>();
-        xText.text = "Indirizzi Sorgente (Src_IP)";
+        xText.text = "Source address (Src_IP)";
         xText.fontSize = fontScale;
         xText.color = Color.black;
         xText.alignment = TextAlignmentOptions.Center;
@@ -506,7 +512,7 @@ public class QueryVisualizer : MonoBehaviour
         GameObject yAxisLabel = new GameObject("Y_Label_DstIP");
         yAxisLabel.transform.SetParent(heatmapWrapper);
         var yText = yAxisLabel.AddComponent<TextMeshPro>();
-        yText.text = "Indirizzi Destinazione (Dst_IP)";
+        yText.text = "Destination address (Dst_IP)";
         yText.fontSize = fontScale;
         yText.color = Color.black;
         yText.alignment = TextAlignmentOptions.Center;
@@ -550,7 +556,7 @@ public class QueryVisualizer : MonoBehaviour
         }
 
         string[] levels = new string[] {
-        "Traffico nullo o molto basso", "Traffico basso", "Traffico medio", "Traffico alto", "Traffico molto alto"
+        "No or very low traffic", "Low traffic", "Medium traffic", "High traffic", "Very high traffic"
     };
         Color[] colors = new Color[] {
         Color.blue, Color.cyan, Color.green, Color.yellow, Color.red
@@ -623,7 +629,7 @@ public class QueryVisualizer : MonoBehaviour
         xAxisLabel.transform.SetParent(anchor);
 
         TextMeshPro tmp = xAxisLabel.AddComponent<TextMeshPro>();
-        tmp.text = "Indirizzi IP univoci (Sorgente)";
+        tmp.text = "Unique IP addresses (Source)";
 
         float totalWidth = numBars * spacing;
         float baseFontSize = Mathf.Clamp(maxBarHeight * 0.2f, 0.5f, 3f);
@@ -653,7 +659,7 @@ public class QueryVisualizer : MonoBehaviour
         yAxisLabel.transform.SetParent(anchor);
 
         TextMeshPro tmp = yAxisLabel.AddComponent<TextMeshPro>();
-        tmp.text = "Terabyte per IP";
+        tmp.text = "Data per IP";
 
         float fontSize = Mathf.Clamp(maxBarHeight * 0.2f, 0.5f, 3f);
 
@@ -716,7 +722,7 @@ public class QueryVisualizer : MonoBehaviour
         {
             sharedLabelQ2.text = content;
 
-            // Calcola direzione dalla cella verso la camera e normalizzala
+            // Calcola direzione dalla cella verso la camera e normalizza
             Vector3 toCameraDir = (Camera.main.transform.position - labelPosition).normalized;
             Vector3 offset = toCameraDir * 0.2f + Vector3.up * 0.05f;
             Vector3 newPos = labelPosition + offset;

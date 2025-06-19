@@ -840,7 +840,7 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 315437936}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 1.29}
   m_LocalScale: {x: 0.13211676, y: 0.13211676, z: 0.13211676}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -849,7 +849,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: -0.135}
   m_SizeDelta: {x: 1801.0001, y: 874}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &315437938
@@ -940,7 +940,7 @@ Transform:
   m_GameObject: {fileID: 325679223}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.157, z: 1}
+  m_LocalPosition: {x: 0, y: 0.019, z: 1.291}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -3934,6 +3934,7 @@ MonoBehaviour:
   spacing: 0.03
   fixedPosition: {fileID: 0}
   barMaterial: {fileID: 2100000, guid: 6668f6f58616d164dba30389dbb9a3bd, type: 2}
+  hoverBarMaterial: {fileID: 0}
   hideGraphAction:
     m_UseReference: 1
     m_Action:
@@ -3981,6 +3982,8 @@ MonoBehaviour:
   byteValue: 0
   visualizer: {fileID: 2016525463}
   isQuery2: 0
+  defaultMaterial: {fileID: 2100000, guid: 6668f6f58616d164dba30389dbb9a3bd, type: 2}
+  hoverMaterial: {fileID: 2100000, guid: b236ea681968d6941ae030fb65c36a5d, type: 2}
 --- !u!1 &2091071296
 GameObject:
   m_ObjectHideFlags: 0

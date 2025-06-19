@@ -52,10 +52,10 @@ public class TutorialManager : MonoBehaviour
         "In this tutorial, you'll learn how to visually explore network traffic in virtual reality.",
         "Use the left controller joystick (3) to move around the environment. Use the right joystick (3) to look around.",
         "Press the Y button (2) on the left controller to show or hide the network timeline. Start the timeline to view the network over time. " +
-        "Each sphere represents a network device with its IP address. Connections between nodes indicate network traffic.",
-        "Point at the connection between two nodes and press the select button (1) on the back of the controller to view the connection details.",
-        "Press the A (2) button on the right controller to show or hide the menu. You can launch any query by pressing its button with the select button on the left controller.",
-        "You're ready to begin. Use the tutorial to learn how the system works, and when you're ready, press the button to use the full system."
+        "Each sphere can be grabbed with the right controller’s grab button (4) and represents a network device with its IP address.",
+        "Connections between nodes indicate network traffic. Move closer and point at the connection between two nodes, then press the select button (1) on the back of the controller to view the connection details.",
+        "Press the A button (2) on the right controller to show or hide the menu. You can launch or hide any query by pressing its button with the select button on the left controller.",
+        "You're ready to begin. If you'd like to review the tutorial again, you can go back using the previous button. When you're ready, press the button to access the full system."
     };
 
     // per ogni step se va mostrata l’immagine del controller
@@ -79,6 +79,13 @@ public class TutorialManager : MonoBehaviour
         if (nextButtonBackground != null)
             coloreOriginale = nextButtonBackground.color;
 
+        // Aggiunta: imposta colore opaco per il pannello principale
+        Image panelImage = panelTutorial.GetComponent<Image>();
+        if (panelImage != null)
+        {
+            panelImage.color = new Color(0.1f, 0.2f, 0.6f, 0.85f); // blu intenso con trasparenza ridotta
+        }
+
         AggiornaLayoutTesti();
         UpdatePanel();
 
@@ -95,6 +102,7 @@ public class TutorialManager : MonoBehaviour
 
         StartCoroutine(ComparsaPanel());
     }
+
 
     IEnumerator ComparsaPanel()
     {

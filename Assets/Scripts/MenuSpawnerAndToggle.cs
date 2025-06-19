@@ -68,11 +68,10 @@ public class MenuSpawnerAndToggle : MonoBehaviour
         GameObject descGO = new GameObject("DescriptionBox");
         descGO.transform.SetParent(panel.transform, false);
         RectTransform drt = descGO.AddComponent<RectTransform>();
-        drt.sizeDelta = new Vector2(260, 150);  // puoi ridurre a 240 se serve più margine orizzontale
-        drt.anchoredPosition = new Vector2(0f, -165f); //distanza da margine alto
+        drt.sizeDelta = new Vector2(260, 150);  
+        drt.anchoredPosition = new Vector2(0f, -165f);
         descGO.layer = uiLayer;
 
-        // Aggiunta del componente Mask (opzionale)
         descGO.AddComponent<RectMask2D>();
 
         descriptionText = descGO.AddComponent<TextMeshProUGUI>();
