@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using System.Globalization;
+using UnityEngine.XR.Interaction.Toolkit;
 
 public class VisualizeNetwork : MonoBehaviour
 {
@@ -165,7 +166,7 @@ public class VisualizeNetwork : MonoBehaviour
 
                 if (bytes > dosThreshold)
                 {
-                    srcColor = new Color(1f, 0.5f, 0f);  // arancione
+                    srcColor = new Color(1f, 0.5f, 0f);
                     dstColor = new Color(1f, 0.5f, 0f);
                 }
 
@@ -173,6 +174,9 @@ public class VisualizeNetwork : MonoBehaviour
                 {
                     srcColor = Color.red;
                     dstColor = Color.red;
+                    // Riproduce suono
+                    AddAudioAndPlay(ipToNode[src]);
+                    AddAudioAndPlay(ipToNode[dst]);
                 }
 
                 if (ipToNode.TryGetValue(src, out GameObject srcNode))
@@ -220,28 +224,33 @@ public class VisualizeNetwork : MonoBehaviour
                     collider.size = new Vector3(0.01f, 0.01f, direction.magnitude);
 
                     var interactable = lineObj.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRSimpleInteractable>();
+
                     interactable.selectEntered.AddListener((args) =>
                     {
                         var panel = FindAnyObjectByType<ConnectionInfoPanel>();
                         if (panel != null)
                         {
-                            Dictionary<string, string> info = new Dictionary<string, string>
-                            {
-                                { "Src_IP", src },
-                                { "Dst_IP", dst },
-                                { "Flow_Bytes_s", byteStr },
-                                { "Flow_Duration", durationStr },
-                                { "Timestamp", rawTime },
-                            };
+                            Dictionary<string, string> info = new()
+        {
+            { "Src_IP", src },
+            { "Dst_IP", dst },
+            { "Flow_Bytes_s", byteStr },
+            { "Flow_Duration", durationStr },
+            { "Timestamp", rawTime }
+        };
 
                             if (row.TryGetValue("Protocol", out string proto))
                                 info.Add("Protocol", proto);
                             if (row.TryGetValue("Label", out string lbl))
                                 info.Add("Label", lbl);
 
-                            panel.ShowInfo(info);
+                            panel.ShowInfo(info, lineObj);
                         }
                     });
+
+
+
+
 
                     StartCoroutine(AnimateLineDraw(lr, start, end));
 
@@ -372,8 +381,7 @@ public class VisualizeNetwork : MonoBehaviour
     }
 
     private class OriginalColorHolder : MonoBehaviour
-{
-    public Color originalColor;
-}
-
+    {
+        public Color originalColor;
+    }
 }

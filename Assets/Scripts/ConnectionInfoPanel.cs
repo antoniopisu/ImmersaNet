@@ -11,13 +11,19 @@ public class ConnectionInfoPanel : MonoBehaviour
 {
     public GameObject panelPrefab;
 
-    public void ShowInfo(Dictionary<string, string> info)
+    private GameObject currentLine = null;
+    private Color originalLineStart = Color.white;
+    private Color originalLineEnd = Color.white;
+
+    public void ShowInfo(Dictionary<string, string> info, GameObject lineObject)
     {
         if (panelPrefab == null)
         {
             Debug.LogError("Panel prefab not assigned.");
             return;
         }
+
+        //Debug.LogWarning($"[ShowInfo] Stack trace:\n{new System.Diagnostics.StackTrace()}");
 
         Transform cam = Camera.main.transform;
         Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
@@ -31,10 +37,30 @@ public class ConnectionInfoPanel : MonoBehaviour
         if (textField != null)
             textField.text = FormatInfo(info);
 
+        // Evidenzia la linea selezionata
+        currentLine = lineObject;
+        if (currentLine != null)
+        {
+            var lr = currentLine.GetComponent<LineRenderer>();
+            if (lr != null)
+            {
+                originalLineStart = lr.startColor;
+                originalLineEnd = lr.endColor;
+
+                lr.startColor = Color.yellow;
+                lr.endColor = Color.yellow;
+            }
+        }
+
+        // Bottone di chiusura
         Button closeBtn = panelInstance.GetComponentsInChildren<Button>().FirstOrDefault(b => b.name == "CloseButton");
         if (closeBtn != null)
         {
-            closeBtn.onClick.AddListener(() => Destroy(panelInstance));
+            closeBtn.onClick.AddListener(() =>
+            {
+                RestoreLineColor();
+                Destroy(panelInstance);
+            });
         }
         else
         {
@@ -42,6 +68,30 @@ public class ConnectionInfoPanel : MonoBehaviour
         }
 
         StartCoroutine(AutoHidePanel(panelInstance, 20f));
+    }
+
+    private void RestoreLineColor()
+    {
+        if (currentLine != null)
+        {
+            var lr = currentLine.GetComponent<LineRenderer>();
+            if (lr != null)
+            {
+                lr.startColor = originalLineStart;
+                lr.endColor = originalLineEnd;
+            }
+            currentLine = null;
+        }
+    }
+
+    private IEnumerator AutoHidePanel(GameObject panel, float seconds)
+    {
+        yield return new WaitForSeconds(seconds);
+        if (panel != null)
+        {
+            RestoreLineColor();
+            Destroy(panel);
+        }
     }
 
     private string FormatInfo(Dictionary<string, string> data)
@@ -84,7 +134,7 @@ public class ConnectionInfoPanel : MonoBehaviour
                     else
                         value = $"Unknown ({original})";
 
-                    Debug.Log($"[ConnectionInfoPanel] Protocol resolved: {value}");
+                    //Debug.Log($"[ConnectionInfoPanel] Protocol resolved: {value}");
                 }
             }
 
@@ -95,12 +145,5 @@ public class ConnectionInfoPanel : MonoBehaviour
         }
 
         return result;
-    }
-
-    private IEnumerator AutoHidePanel(GameObject panel, float seconds)
-    {
-        yield return new WaitForSeconds(seconds);
-        if (panel != null)
-            Destroy(panel);
     }
 }

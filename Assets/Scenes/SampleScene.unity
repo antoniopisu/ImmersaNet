@@ -545,7 +545,7 @@ MonoBehaviour:
       m_Interactions: 
       m_SingletonActionBindings: []
       m_Flags: 0
-    m_InputActionReferencePerformed: {fileID: 0}
+    m_InputActionReferencePerformed: {fileID: -2439264783773714294, guid: 0be0028c24f2a4c14a96b6aa39055933, type: 3}
     m_InputActionReferenceValue: {fileID: 0}
     m_ObjectReferenceObject: {fileID: 0}
     m_ManualPerformed: 0
@@ -3934,7 +3934,7 @@ MonoBehaviour:
   spacing: 0.03
   fixedPosition: {fileID: 0}
   barMaterial: {fileID: 2100000, guid: 6668f6f58616d164dba30389dbb9a3bd, type: 2}
-  hoverBarMaterial: {fileID: 0}
+  hoverBarMaterial: {fileID: 2100000, guid: b236ea681968d6941ae030fb65c36a5d, type: 2}
   hideGraphAction:
     m_UseReference: 1
     m_Action:
