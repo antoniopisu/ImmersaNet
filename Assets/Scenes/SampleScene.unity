@@ -466,7 +466,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 10bbd5796b0a8cd4eacb77cfcaf09252, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  nomeFileCSV: nuevo
+  nomeFileCSV: nuevo_modificato
   isLoaded: 0
   progress: 0
 --- !u!114 &307022788
@@ -2646,7 +2646,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: -87.998, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.042, y: 0.103}
+  m_AnchoredPosition: {x: -0.042, y: 0.121}
   m_SizeDelta: {x: 10, y: 1}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1174318742

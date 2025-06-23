@@ -2520,7 +2520,7 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_RaycastTriggerInteraction: 1
+  m_RaycastTriggerInteraction: 0
 --- !u!114 &1174318737
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -145,124 +145,127 @@ public class VisualizeNetwork : MonoBehaviour
             if (!row.TryGetValue("Flow_Duration", out string durationStr)) continue;
             if (!double.TryParse(durationStr, out double durationMs)) continue;
 
-            DateTime endTime = startTime.AddMilliseconds(durationMs);
-
-            if (tempo >= startTime && tempo <= endTime)
+            if (durationMs > 0 && durationMs < 1e9)
             {
-                string src = row["Src_IP"].Trim();
-                string dst = row["Dst_IP"].Trim();
+                DateTime endTime = startTime.AddMilliseconds(durationMs);
 
-                double bytes = 0;
-                if (row.TryGetValue("Flow_Bytes_s", out string byteStr))
-                    double.TryParse(byteStr, NumberStyles.Float, CultureInfo.InvariantCulture, out bytes);
-
-                if (ipToCumulativeBytes.ContainsKey(src)) ipToCumulativeBytes[src] += bytes;
-                if (ipToCumulativeBytes.ContainsKey(dst)) ipToCumulativeBytes[dst] += bytes;
-
-                maxBytesObserved = Math.Max(maxBytesObserved, Math.Max(ipToCumulativeBytes[src], ipToCumulativeBytes[dst]));
-
-                Color srcColor = ipToNode[src].GetComponent<OriginalColorHolder>().originalColor;
-                Color dstColor = ipToNode[dst].GetComponent<OriginalColorHolder>().originalColor;
-
-                if (bytes > dosThreshold)
+                if (tempo >= startTime && tempo <= endTime)
                 {
-                    srcColor = new Color(1f, 0.5f, 0f);
-                    dstColor = new Color(1f, 0.5f, 0f);
-                }
+                    string src = row["Src_IP"].Trim();
+                    string dst = row["Dst_IP"].Trim();
 
-                if (row.TryGetValue("Label", out string label) && label != "Benign")
-                {
-                    srcColor = Color.red;
-                    dstColor = Color.red;
-                    // Riproduce suono
-                    AddAudioAndPlay(ipToNode[src]);
-                    AddAudioAndPlay(ipToNode[dst]);
-                }
+                    double bytes = 0;
+                    if (row.TryGetValue("Flow_Bytes_s", out string byteStr))
+                        double.TryParse(byteStr, NumberStyles.Float, CultureInfo.InvariantCulture, out bytes);
 
-                if (ipToNode.TryGetValue(src, out GameObject srcNode))
-                {
-                    srcNode.SetActive(true);
-                    if (!srcNode.GetComponent<AnimatedNodeFlag>().hasAnimated)
+                    if (ipToCumulativeBytes.ContainsKey(src)) ipToCumulativeBytes[src] += bytes;
+                    if (ipToCumulativeBytes.ContainsKey(dst)) ipToCumulativeBytes[dst] += bytes;
+
+                    maxBytesObserved = Math.Max(maxBytesObserved, Math.Max(ipToCumulativeBytes[src], ipToCumulativeBytes[dst]));
+
+                    Color srcColor = ipToNode[src].GetComponent<OriginalColorHolder>().originalColor;
+                    Color dstColor = ipToNode[dst].GetComponent<OriginalColorHolder>().originalColor;
+
+                    if (bytes > dosThreshold)
                     {
-                        StartCoroutine(AnimateNodeAppearance(srcNode));
-                        srcNode.GetComponent<AnimatedNodeFlag>().hasAnimated = true;
+                        srcColor = new Color(1f, 0.5f, 0f);
+                        dstColor = new Color(1f, 0.5f, 0f);
                     }
-                    var renderer = srcNode.GetComponentInChildren<Renderer>();
-                    if (renderer != null) renderer.material.color = srcColor;
-                }
 
-                if (ipToNode.TryGetValue(dst, out GameObject dstNode))
-                {
-                    dstNode.SetActive(true);
-                    if (!dstNode.GetComponent<AnimatedNodeFlag>().hasAnimated)
+                    if (row.TryGetValue("Label", out string label) && label != "Benign")
                     {
-                        StartCoroutine(AnimateNodeAppearance(dstNode));
-                        dstNode.GetComponent<AnimatedNodeFlag>().hasAnimated = true;
+                        srcColor = Color.red;
+                        dstColor = Color.red;
+                        AddAudioAndPlay(ipToNode[src]);
+                        AddAudioAndPlay(ipToNode[dst]);
                     }
-                    var renderer = dstNode.GetComponentInChildren<Renderer>();
-                    if (renderer != null) renderer.material.color = dstColor;
-                }
 
-                if (!activeLines.Exists(l => l.lineObj != null && l.lineObj.name == $"{src}->{dst}"))
-                {
-                    GameObject lineObj = Instantiate(linePrefab);
-                    lineObj.name = $"{src}->{dst}";
-                    LineRenderer lr = lineObj.GetComponent<LineRenderer>();
-
-                    Vector3 start = ipToNode[src].transform.position;
-                    Vector3 end = ipToNode[dst].transform.position;
-
-                    lr.positionCount = 2;
-                    lr.SetPosition(0, start);
-                    lr.SetPosition(1, start);
-
-                    BoxCollider collider = lineObj.AddComponent<BoxCollider>();
-                    Vector3 midPoint = (start + end) / 2;
-                    lineObj.transform.position = midPoint;
-                    Vector3 direction = end - start;
-                    lineObj.transform.rotation = Quaternion.LookRotation(direction);
-                    collider.size = new Vector3(0.01f, 0.01f, direction.magnitude);
-
-                    var interactable = lineObj.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRSimpleInteractable>();
-
-                    interactable.selectEntered.AddListener((args) =>
+                    if (ipToNode.TryGetValue(src, out GameObject srcNode))
                     {
-                        var panel = FindAnyObjectByType<ConnectionInfoPanel>();
-                        if (panel != null)
+                        srcNode.SetActive(true);
+                        if (!srcNode.GetComponent<AnimatedNodeFlag>().hasAnimated)
                         {
-                            Dictionary<string, string> info = new()
-        {
-            { "Src_IP", src },
-            { "Dst_IP", dst },
-            { "Flow_Bytes_s", byteStr },
-            { "Flow_Duration", durationStr },
-            { "Timestamp", rawTime }
-        };
-
-                            if (row.TryGetValue("Protocol", out string proto))
-                                info.Add("Protocol", proto);
-                            if (row.TryGetValue("Label", out string lbl))
-                                info.Add("Label", lbl);
-
-                            panel.ShowInfo(info, lineObj);
+                            StartCoroutine(AnimateNodeAppearance(srcNode));
+                            srcNode.GetComponent<AnimatedNodeFlag>().hasAnimated = true;
                         }
-                    });
+                        var renderer = srcNode.GetComponentInChildren<Renderer>();
+                        if (renderer != null) renderer.material.color = srcColor;
+                    }
 
-
-
-
-
-                    StartCoroutine(AnimateLineDraw(lr, start, end));
-
-                    activeLines.Add(new ActiveLine
+                    if (ipToNode.TryGetValue(dst, out GameObject dstNode))
                     {
-                        lineObj = lineObj,
-                        srcNode = ipToNode[src],
-                        dstNode = ipToNode[dst],
-                        startTime = startTime,
-                        endTime = endTime
-                    });
+                        dstNode.SetActive(true);
+                        if (!dstNode.GetComponent<AnimatedNodeFlag>().hasAnimated)
+                        {
+                            StartCoroutine(AnimateNodeAppearance(dstNode));
+                            dstNode.GetComponent<AnimatedNodeFlag>().hasAnimated = true;
+                        }
+                        var renderer = dstNode.GetComponentInChildren<Renderer>();
+                        if (renderer != null) renderer.material.color = dstColor;
+                    }
+
+                    if (!activeLines.Exists(l => l.lineObj != null && l.lineObj.name == $"{src}->{dst}"))
+                    {
+                        GameObject lineObj = Instantiate(linePrefab);
+                        lineObj.name = $"{src}->{dst}";
+                        LineRenderer lr = lineObj.GetComponent<LineRenderer>();
+
+                        Vector3 start = ipToNode[src].transform.position;
+                        Vector3 end = ipToNode[dst].transform.position;
+
+                        lr.positionCount = 2;
+                        lr.SetPosition(0, start);
+                        lr.SetPosition(1, start);
+
+                        BoxCollider collider = lineObj.AddComponent<BoxCollider>();
+                        Vector3 midPoint = (start + end) / 2;
+                        lineObj.transform.position = midPoint;
+                        Vector3 direction = end - start;
+                        lineObj.transform.rotation = Quaternion.LookRotation(direction);
+                        collider.size = new Vector3(0.01f, 0.01f, direction.magnitude);
+
+                        var interactable = lineObj.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRSimpleInteractable>();
+
+                        interactable.selectEntered.AddListener((args) =>
+                        {
+                            var panel = FindAnyObjectByType<ConnectionInfoPanel>();
+                            if (panel != null)
+                            {
+                                Dictionary<string, string> info = new()
+                                {
+                                    { "Src_IP", src },
+                                    { "Dst_IP", dst },
+                                    { "Flow_Bytes_s", byteStr },
+                                    { "Flow_Duration", durationStr },
+                                    { "Timestamp", rawTime }
+                                };
+
+                                if (row.TryGetValue("Protocol", out string proto))
+                                    info.Add("Protocol", proto);
+                                if (row.TryGetValue("Label", out string lbl))
+                                    info.Add("Label", lbl);
+
+                                panel.ShowInfo(info, lineObj);
+                            }
+                        });
+
+                        StartCoroutine(AnimateLineDraw(lr, start, end));
+
+                        activeLines.Add(new ActiveLine
+                        {
+                            lineObj = lineObj,
+                            srcNode = ipToNode[src],
+                            dstNode = ipToNode[dst],
+                            startTime = startTime,
+                            endTime = endTime
+                        });
+                    }
                 }
+            }
+            else
+            {
+                Debug.LogWarning($"[VisualizeNetwork] Flow_Duration fuori range: {durationMs} ms per timestamp {startTime}");
+                continue;
             }
         }
 

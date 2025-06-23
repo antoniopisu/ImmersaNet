@@ -11,9 +11,8 @@ public class ConnectionInfoPanel : MonoBehaviour
 {
     public GameObject panelPrefab;
 
-    private GameObject currentLine = null;
-    private Color originalLineStart = Color.white;
-    private Color originalLineEnd = Color.white;
+    private Dictionary<GameObject, GameObject> lineToPanel = new();
+    private Dictionary<GameObject, (Color start, Color end)> originalColors = new();
 
     public void ShowInfo(Dictionary<string, string> info, GameObject lineObject)
     {
@@ -23,7 +22,11 @@ public class ConnectionInfoPanel : MonoBehaviour
             return;
         }
 
-        //Debug.LogWarning($"[ShowInfo] Stack trace:\n{new System.Diagnostics.StackTrace()}");
+        if (lineToPanel.ContainsKey(lineObject))
+        {
+            Debug.Log($"[ShowInfo] Panel already open for line {lineObject.name}");
+            return;
+        }
 
         Transform cam = Camera.main.transform;
         Vector3 forward = new Vector3(cam.forward.x, 0, cam.forward.z).normalized;
@@ -31,81 +34,64 @@ public class ConnectionInfoPanel : MonoBehaviour
 
         GameObject panelInstance = Instantiate(panelPrefab, position, Quaternion.LookRotation(forward));
         panelInstance.transform.localScale = Vector3.one * 0.002f;
-        Debug.Log("[ShowInfo] Called with keys: " + string.Join(", ", info.Keys));
 
         TextMeshProUGUI textField = panelInstance.GetComponentInChildren<TextMeshProUGUI>();
         if (textField != null)
             textField.text = FormatInfo(info);
 
-        // Evidenzia la linea selezionata
-        currentLine = lineObject;
-        if (currentLine != null)
+        // Evidenzia la linea
+        var lr = lineObject.GetComponent<LineRenderer>();
+        if (lr != null)
         {
-            var lr = currentLine.GetComponent<LineRenderer>();
-            if (lr != null)
-            {
-                originalLineStart = lr.startColor;
-                originalLineEnd = lr.endColor;
-
-                lr.startColor = Color.yellow;
-                lr.endColor = Color.yellow;
-            }
+            originalColors[lineObject] = (lr.startColor, lr.endColor);
+            lr.startColor = Color.yellow;
+            lr.endColor = Color.yellow;
         }
 
-        // Bottone di chiusura
+        lineToPanel[lineObject] = panelInstance;
+
         Button closeBtn = panelInstance.GetComponentsInChildren<Button>().FirstOrDefault(b => b.name == "CloseButton");
         if (closeBtn != null)
         {
-            closeBtn.onClick.AddListener(() =>
-            {
-                RestoreLineColor();
-                Destroy(panelInstance);
-            });
-        }
-        else
-        {
-            Debug.LogWarning("CloseButton non trovato nel prefab.");
+            closeBtn.onClick.AddListener(() => ClosePanel(lineObject));
         }
 
-        StartCoroutine(AutoHidePanel(panelInstance, 20f));
+        StartCoroutine(AutoHidePanel(lineObject, 20f));
     }
 
-    private void RestoreLineColor()
+    private void ClosePanel(GameObject lineObject)
     {
-        if (currentLine != null)
+        if (lineToPanel.TryGetValue(lineObject, out GameObject panel))
         {
-            var lr = currentLine.GetComponent<LineRenderer>();
+            Destroy(panel);
+            lineToPanel.Remove(lineObject);
+        }
+
+        if (originalColors.TryGetValue(lineObject, out var colors))
+        {
+            var lr = lineObject.GetComponent<LineRenderer>();
             if (lr != null)
             {
-                lr.startColor = originalLineStart;
-                lr.endColor = originalLineEnd;
+                lr.startColor = colors.start;
+                lr.endColor = colors.end;
             }
-            currentLine = null;
+
+            originalColors.Remove(lineObject);
         }
     }
 
-    private IEnumerator AutoHidePanel(GameObject panel, float seconds)
+    private IEnumerator AutoHidePanel(GameObject lineObject, float seconds)
     {
         yield return new WaitForSeconds(seconds);
-        if (panel != null)
-        {
-            RestoreLineColor();
-            Destroy(panel);
-        }
+        ClosePanel(lineObject);
     }
 
     private string FormatInfo(Dictionary<string, string> data)
     {
-        Dictionary<string, string> protocolNames = new Dictionary<string, string>
+        Dictionary<string, string> protocolNames = new()
         {
-            { "6", "TCP" },
-            { "17", "UDP" },
-            { "1", "ICMP" },
-            { "2", "IGMP" },
-            { "47", "GRE" },
-            { "50", "ESP" },
-            { "51", "AH" },
-            { "89", "OSPF" }
+            { "6", "TCP" }, { "17", "UDP" }, { "1", "ICMP" }, { "2", "IGMP" },
+            { "47", "GRE" }, { "50", "ESP" }, { "51", "AH" }, { "89", "OSPF" }
         };
 
         string result = "<b>Connection Info</b>\n\n";
@@ -116,27 +102,11 @@ public class ConnectionInfoPanel : MonoBehaviour
             string value = entry.Value;
 
             if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double numericValue))
-            {
                 value = numericValue.ToString("F2", CultureInfo.InvariantCulture);
-            }
 
-            if (key.Equals("Protocol", StringComparison.OrdinalIgnoreCase))
-            {
-                string original = value;
-
-                if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double protoNumber))
-                {
-                    int protoInt = (int)Math.Round(protoNumber);
-                    string protoKey = protoInt.ToString();
-
-                    if (protocolNames.TryGetValue(protoKey, out string protoName))
-                        value = $"{protoName} ({protoKey})";
-                    else
-                        value = $"Unknown ({original})";
-
-                    //Debug.Log($"[ConnectionInfoPanel] Protocol resolved: {value}");
-                }
-            }
+            if (key.Equals("Protocol", StringComparison.OrdinalIgnoreCase) &&
+                protocolNames.TryGetValue(((int)Math.Round(numericValue)).ToString(), out string name))
+                value = $"{name} ({(int)Math.Round(numericValue)})";
 
             if (key == "Label" && !value.ToLower().Contains("benign"))
                 result += $"<b>{key}:</b> <color=red>{value}</color>\n";
