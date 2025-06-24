@@ -26,6 +26,10 @@ public class TimelineManager : MonoBehaviour
     {
         if (!gameObject.activeInHierarchy || !enabled) return;
 
+        // Disabilita Raycast Target solo per l'orario
+        if (timeDisplay != null)
+            timeDisplay.raycastTarget = false;
+
         // Disattiva pulsanti finché non è pronto
         playButton.interactable = false;
         pauseButton.interactable = false;
