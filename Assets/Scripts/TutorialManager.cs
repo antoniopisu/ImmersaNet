@@ -51,9 +51,9 @@ public class TutorialManager : MonoBehaviour
     {
         "In this tutorial, you'll learn how to visually explore network traffic in virtual reality.",
         "Use the left controller joystick (3) to move around the environment. Use the right joystick (3) to look around.",
-        "Press the Y button (2) on the left controller to show or hide the network timeline. Start the timeline to view the network over time. " +
+        "Press the Y button (2) on the left controller to show or hide the network timeline using the right controller. Start the timeline to view the network over time. " +
         "Each sphere can be grabbed with the right controller’s grab button (4) and represents a network device with its IP address.",
-        "Connections between nodes indicate network traffic. Move closer and point at the connection between two nodes, then press the select button (1) on the back of the controller to view the connection details.",
+        "Connections between nodes indicate network traffic. Move closer and point at the connection between two nodes, then press the grab button (4) on the side of the controller to view the connection details.",
         "Press the A button (2) on the right controller to show or hide the menu. You can launch or hide any query by pressing its button with the select button on the left controller.",
         "You're ready to begin. If you'd like to review the tutorial again, you can go back using the previous button. When you're ready, press the button to access the full system."
     };

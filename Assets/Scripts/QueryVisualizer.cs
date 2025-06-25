@@ -540,6 +540,7 @@ public class QueryVisualizer : MonoBehaviour
             sharedLabelQ2Background.transform.SetParent(sharedLabelQ2.transform);
             sharedLabelQ2Background.transform.localPosition = new Vector3(0f, 0f, 0.01f);
             sharedLabelQ2Background.transform.localScale = new Vector3(0.25f, 0.1f, 1f);
+            sharedLabelQ2Background.transform.rotation = heatmapWrapper.rotation;
 
             var bgRenderer = sharedLabelQ2Background.GetComponent<Renderer>();
             Material mat = new Material(Shader.Find("Unlit/Color"));

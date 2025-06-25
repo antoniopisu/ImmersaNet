@@ -13,7 +13,7 @@ public class ToggleTimelineVisibility : MonoBehaviour
         // Nasconde il canvas appena viene caricato, prima ancora che Start venga eseguito
         if (timelineCanvas != null)
         {
-            timelineCanvas.SetActive(true);
+            timelineCanvas.SetActive(false);
         }
     }
 
