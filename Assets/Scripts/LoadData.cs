@@ -19,7 +19,7 @@ public class LoadData : MonoBehaviour
             Debug.LogError("CSV file not found in Resources: " + nomeFileCSV);
             yield break;
         }
-
+        // pulizia in caso di caratteri speciali
         string[] lines = csvFile.text.Split(new[] { "\r\n", "\n" }, System.StringSplitOptions.None);
 
         if (lines.Length <= 1)

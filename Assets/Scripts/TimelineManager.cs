@@ -26,7 +26,7 @@ public class TimelineManager : MonoBehaviour
     {
         if (!gameObject.activeInHierarchy || !enabled) return;
 
-        // Disabilita Raycast Target solo per l'orario
+        // Disabilita Raycast Target solo per l'orario, se è true i puntatori dei controller sono troppo corti per una corretta interazione
         if (timeDisplay != null)
             timeDisplay.raycastTarget = false;
 

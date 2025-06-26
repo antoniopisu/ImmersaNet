@@ -58,7 +58,7 @@ public class TutorialManager : MonoBehaviour
         "You're ready to begin. If you'd like to review the tutorial again, you can go back using the previous button. When you're ready, press the button to access the full system."
     };
 
-    // per ogni step se va mostrata l’immagine del controller
+    // Per ogni step se va mostrata l’immagine del controller
     private bool[] mostraController =
     {
         false, // Welcome
@@ -79,11 +79,10 @@ public class TutorialManager : MonoBehaviour
         if (nextButtonBackground != null)
             coloreOriginale = nextButtonBackground.color;
 
-        // Aggiunta: imposta colore opaco per il pannello principale
         Image panelImage = panelTutorial.GetComponent<Image>();
         if (panelImage != null)
         {
-            panelImage.color = new Color(0.1f, 0.2f, 0.6f, 0.85f); // blu intenso con trasparenza ridotta
+            panelImage.color = new Color(0.1f, 0.2f, 0.6f, 0.85f);
         }
 
         AggiornaLayoutTesti();

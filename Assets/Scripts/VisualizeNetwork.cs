@@ -8,15 +8,15 @@ using UnityEngine.XR.Interaction.Toolkit;
 
 public class VisualizeNetwork : MonoBehaviour
 {
-    public LoadData loadData;
-    public GameObject nodePrefab;
-    public GameObject linePrefab;
-    private AudioClip alarmClip;
-    public int nodesPerLevel = 7;
-    public float levelHeight = 1f;
-    public float ringRadius = 3f;
-    public Transform playerCamera;
-    public float forwardOffset = 5.0f;
+    public LoadData loadData;                        // Script che carica i dati dal CSV
+    public GameObject nodePrefab;                    // Prefab del nodo IP
+    public GameObject linePrefab;                    // Prefab della linea di connessione
+    private AudioClip alarmClip;                     // Clip audio per allarme
+    public int nodesPerLevel = 7;                    // Numero max di nodi per anello
+    public float levelHeight = 1f;                   // Altezza tra i livelli
+    public float ringRadius = 3f;                    // Raggio dell'anello
+    public Transform playerCamera;                   // Riferimento alla camera del player (VR)
+    public float forwardOffset = 5.0f;               // Offset in avanti rispetto al player
 
     [Header("Node Scaling Settings")]
     public float minNodeScale = 0.2f;
@@ -30,8 +30,9 @@ public class VisualizeNetwork : MonoBehaviour
 
     private Dictionary<string, GameObject> ipToNode = new Dictionary<string, GameObject>();
     private Dictionary<string, double> ipToCumulativeBytes = new Dictionary<string, double>();
-    private GameObject networkWrapper;
+    private GameObject networkWrapper;  // Contenitore della rete
 
+    // Rappresentazione di una connessione attiva
     private class ActiveLine
     {
         public GameObject lineObj;
@@ -54,9 +55,11 @@ public class VisualizeNetwork : MonoBehaviour
         while (!loadData.isLoaded)
             yield return null;
 
+        // Crea contenitore della rete
         networkWrapper = new GameObject("NetworkTreeWrapper");
         Transform wrapperTransform = networkWrapper.transform;
 
+        // Posiziona la rete davanti al giocatore
         Vector3 treeCenter = Vector3.zero;
         if (playerCamera != null)
         {
@@ -65,9 +68,9 @@ public class VisualizeNetwork : MonoBehaviour
             float extraOffset = 2f;
             treeCenter = flatCameraPos + forwardXZ * (forwardOffset + extraOffset);
         }
+        wrapperTransform.position = treeCenter;
 
-        wrapperTransform.position = new Vector3(treeCenter.x, treeCenter.y, treeCenter.z);
-
+        // Estrae tutti gli IP unici
         HashSet<string> ipSet = new HashSet<string>();
         foreach (var row in loadData.data)
         {
@@ -78,6 +81,7 @@ public class VisualizeNetwork : MonoBehaviour
             }
         }
 
+        // Ordina gli IP e posiziona i nodi in cerchi concentrici
         List<string> uniqueIPs = new List<string>(ipSet);
         uniqueIPs.Sort();
 
@@ -96,11 +100,10 @@ public class VisualizeNetwork : MonoBehaviour
 
             GameObject node = Instantiate(nodePrefab, wrapperTransform);
             node.transform.localPosition = localPos;
+
             var rend = node.GetComponent<Renderer>();
             if (rend != null)
-            {
                 node.AddComponent<OriginalColorHolder>().originalColor = rend.material.color;
-            }
 
             node.name = ip;
             ipToNode[ip] = node;
@@ -109,35 +112,39 @@ public class VisualizeNetwork : MonoBehaviour
             var label = node.GetComponentInChildren<TextMeshPro>();
             if (label != null) label.text = ip;
 
-            node.SetActive(false);
+            node.SetActive(false); // attivo solo quando coinvolto
             node.AddComponent<AnimatedNodeFlag>();
             index++;
         }
     }
 
+    // Visualizza lo stato della rete in un dato istante temporale
     public void VisualizzaReteInTempo(DateTime tempo)
     {
         if (!visualizationEnabled) return;
 
+        // Disattiva tutti i nodi
         foreach (var node in ipToNode.Values)
             node.SetActive(false);
 
+        // Rimuove linee non più attive
         activeLines.RemoveAll(l =>
         {
             if (tempo < l.startTime || tempo > l.endTime)
             {
-                if (l.lineObj != null)
-                    Destroy(l.lineObj);
+                if (l.lineObj != null) Destroy(l.lineObj);
                 return true;
             }
             return false;
         });
 
+        // Reset traffico
         foreach (var key in new List<string>(ipToCumulativeBytes.Keys))
             ipToCumulativeBytes[key] = 0;
 
         double maxBytesObserved = 0;
 
+        // Ciclo sui dati per il tempo corrente
         foreach (var row in loadData.data)
         {
             if (!row.TryGetValue("Timestamp", out string rawTime)) continue;
@@ -149,6 +156,7 @@ public class VisualizeNetwork : MonoBehaviour
             {
                 DateTime endTime = startTime.AddMilliseconds(durationMs);
 
+                // Se il flusso è attivo nel momento selezionato
                 if (tempo >= startTime && tempo <= endTime)
                 {
                     string src = row["Src_IP"].Trim();
@@ -163,15 +171,18 @@ public class VisualizeNetwork : MonoBehaviour
 
                     maxBytesObserved = Math.Max(maxBytesObserved, Math.Max(ipToCumulativeBytes[src], ipToCumulativeBytes[dst]));
 
+                    // Colore normale
                     Color srcColor = ipToNode[src].GetComponent<OriginalColorHolder>().originalColor;
                     Color dstColor = ipToNode[dst].GetComponent<OriginalColorHolder>().originalColor;
 
+                    // Traffico sospetto
                     if (bytes > dosThreshold)
                     {
-                        srcColor = new Color(1f, 0.5f, 0f);
+                        srcColor = new Color(1f, 0.5f, 0f); // arancione
                         dstColor = new Color(1f, 0.5f, 0f);
                     }
 
+                    // Attacco rilevato
                     if (row.TryGetValue("Label", out string label) && label != "Benign")
                     {
                         srcColor = Color.red;
@@ -180,30 +191,24 @@ public class VisualizeNetwork : MonoBehaviour
                         AddAudioAndPlay(ipToNode[dst]);
                     }
 
-                    if (ipToNode.TryGetValue(src, out GameObject srcNode))
+                    // Attiva nodi e assegna colore
+                    foreach (var nodeData in new[] { (src, srcColor), (dst, dstColor) })
                     {
-                        srcNode.SetActive(true);
-                        if (!srcNode.GetComponent<AnimatedNodeFlag>().hasAnimated)
+                        if (ipToNode.TryGetValue(nodeData.Item1, out GameObject node))
                         {
-                            StartCoroutine(AnimateNodeAppearance(srcNode));
-                            srcNode.GetComponent<AnimatedNodeFlag>().hasAnimated = true;
+                            node.SetActive(true);
+                            if (!node.GetComponent<AnimatedNodeFlag>().hasAnimated)
+                            {
+                                StartCoroutine(AnimateNodeAppearance(node));
+                                node.GetComponent<AnimatedNodeFlag>().hasAnimated = true;
+                            }
+
+                            var renderer = node.GetComponentInChildren<Renderer>();
+                            if (renderer != null) renderer.material.color = nodeData.Item2;
                         }
-                        var renderer = srcNode.GetComponentInChildren<Renderer>();
-                        if (renderer != null) renderer.material.color = srcColor;
                     }
 
-                    if (ipToNode.TryGetValue(dst, out GameObject dstNode))
-                    {
-                        dstNode.SetActive(true);
-                        if (!dstNode.GetComponent<AnimatedNodeFlag>().hasAnimated)
-                        {
-                            StartCoroutine(AnimateNodeAppearance(dstNode));
-                            dstNode.GetComponent<AnimatedNodeFlag>().hasAnimated = true;
-                        }
-                        var renderer = dstNode.GetComponentInChildren<Renderer>();
-                        if (renderer != null) renderer.material.color = dstColor;
-                    }
-
+                    // Crea linea se non esiste
                     if (!activeLines.Exists(l => l.lineObj != null && l.lineObj.name == $"{src}->{dst}"))
                     {
                         GameObject lineObj = Instantiate(linePrefab);
@@ -215,8 +220,9 @@ public class VisualizeNetwork : MonoBehaviour
 
                         lr.positionCount = 2;
                         lr.SetPosition(0, start);
-                        lr.SetPosition(1, start);
+                        lr.SetPosition(1, start); // animazione partirà da qui
 
+                        // Collider per interazione VR
                         BoxCollider collider = lineObj.AddComponent<BoxCollider>();
                         Vector3 midPoint = (start + end) / 2;
                         lineObj.transform.position = midPoint;
@@ -239,7 +245,6 @@ public class VisualizeNetwork : MonoBehaviour
                                     { "Flow_Duration", durationStr },
                                     { "Timestamp", rawTime }
                                 };
-
                                 if (row.TryGetValue("Protocol", out string proto))
                                     info.Add("Protocol", proto);
                                 if (row.TryGetValue("Label", out string lbl))
@@ -269,6 +274,7 @@ public class VisualizeNetwork : MonoBehaviour
             }
         }
 
+        // Adatta scala dei nodi in base al traffico osservato
         foreach (var kvp in ipToCumulativeBytes)
         {
             if (ipToNode.TryGetValue(kvp.Key, out GameObject node))
@@ -280,6 +286,7 @@ public class VisualizeNetwork : MonoBehaviour
         }
     }
 
+    // Riproduce un suono di allarme da un nodo
     private void AddAudioAndPlay(GameObject node)
     {
         if (alarmClip == null)
@@ -302,6 +309,7 @@ public class VisualizeNetwork : MonoBehaviour
         source.PlayOneShot(alarmClip);
     }
 
+    // Animazione scala nodi
     private IEnumerator AnimateNodeAppearance(GameObject node, float duration = 0.3f)
     {
         Vector3 targetScale = node.transform.localScale;
@@ -319,6 +327,7 @@ public class VisualizeNetwork : MonoBehaviour
         node.transform.localScale = targetScale;
     }
 
+    // Animazione disegno link
     private IEnumerator AnimateLineDraw(LineRenderer lr, Vector3 start, Vector3 end, float duration = 0.3f)
     {
         float elapsed = 0f;
@@ -339,6 +348,7 @@ public class VisualizeNetwork : MonoBehaviour
         public bool hasAnimated = false;
     }
 
+    // Gizmo per debug: centro rete
     void OnDrawGizmos()
     {
         if (networkWrapper != null)
@@ -348,6 +358,7 @@ public class VisualizeNetwork : MonoBehaviour
         }
     }
 
+    // Aggiorna dinamicamente le linee tra nodi
     void Update()
     {
         foreach (var line in activeLines)
@@ -365,13 +376,12 @@ public class VisualizeNetwork : MonoBehaviour
         }
     }
 
+    // Aggiorna il collider lungo la linea tra due punti
     private void UpdateColliderBetweenPoints(GameObject lineObj, Vector3 start, Vector3 end)
     {
         var collider = lineObj.GetComponent<BoxCollider>();
         if (collider == null)
-        {
             collider = lineObj.AddComponent<BoxCollider>();
-        }
 
         Vector3 direction = end - start;
         float length = direction.magnitude;

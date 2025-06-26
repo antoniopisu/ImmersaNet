@@ -10,7 +10,7 @@ public class ToggleTimelineVisibility : MonoBehaviour
 
     void Awake()
     {
-        // Nasconde il canvas appena viene caricato, prima ancora che Start venga eseguito
+        // Nasconde il canvas appena viene caricato, prima ancora che Start venga eseguito, utile mettere false se non si ha il visore
         if (timelineCanvas != null)
         {
             timelineCanvas.SetActive(false);

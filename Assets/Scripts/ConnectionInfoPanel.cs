@@ -39,7 +39,7 @@ public class ConnectionInfoPanel : MonoBehaviour
         if (textField != null)
             textField.text = FormatInfo(info);
 
-        // Evidenzia la linea
+        // evidenzia la linea
         var lr = lineObject.GetComponent<LineRenderer>();
         if (lr != null)
         {
@@ -59,6 +59,7 @@ public class ConnectionInfoPanel : MonoBehaviour
         StartCoroutine(AutoHidePanel(lineObject, 20f));
     }
 
+    // chiusura panel con bottone e ripristino colore linea
     private void ClosePanel(GameObject lineObject)
     {
         if (lineToPanel.TryGetValue(lineObject, out GameObject panel))
@@ -80,12 +81,14 @@ public class ConnectionInfoPanel : MonoBehaviour
         }
     }
 
+    // imposta il tempo di chiusura automatica del panel
     private IEnumerator AutoHidePanel(GameObject lineObject, float seconds)
     {
         yield return new WaitForSeconds(seconds);
         ClosePanel(lineObject);
     }
 
+    // formato delle informazioni del panel con mappatura protocolli
     private string FormatInfo(Dictionary<string, string> data)
     {
         Dictionary<string, string> protocolNames = new()
